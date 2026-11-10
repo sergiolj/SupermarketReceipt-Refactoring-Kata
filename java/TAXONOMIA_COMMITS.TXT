@@ -1,0 +1,16 @@
+Tipo            Objetivo na Engenharia de Software
+=====================================================================================================
+feat            Adiciona uma nova funcionalidade (regras de negócio) ao sistema.fixResolve um defeito
+                (bug) no comportamento do sistema.
+refactor        Altera a estrutura interna do código sem adicionar funcionalidades ou corrigir falhas
+                (ex: padrões de projeto, extração de métodos).
+test            Adiciona, altera ou corrige oráculos de teste (Jest, JUnit, mocks).
+
+chore           Alterações em infraestrutura, dependências, scripts de build ou ferramentas de CI/CD.
+                Não afeta o código de produção.
+docs            Modificações exclusivas em arquivos de documentação (README, Javadoc, Swagger).
+
+perf            Alterações de código com foco estrito em otimização de tempo de execução (Big O) ou consumo de memória.
+
+style           Ajustes cosméticos que não alteram a execução do código (formatação, indentação,
+                remoção de espaços em branco).
