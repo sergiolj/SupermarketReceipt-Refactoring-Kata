@@ -1,7 +1,6 @@
 O que você vai encontrar nesse documento:
 1. Convenção para commits
 2. Metodologia para edições
-3. Ferramentas de testes
 
 1. Convenção de COMMITS
 A estrutura dos commits deve ser dividida em três partes(Cabeçalho, Corpo e Rodapé), sendo o cabeçalho a única parte
@@ -89,16 +88,6 @@ git rebase origin/main
 
 2.6 Envio (Push) e integração (Pull Request)
 git push -u origin <nome-da-sua-branch>
-
-3.FERRAMENTAS DE TESTE
-Banco de dados H2
-http://localhost:8080/h2-console/
-JDBC URL: jdbc:h2:mem:grocery
-User Name: sa
-Password:
-
-Swagger para testes de endpoints
-http://localhost:8080/swagger-ui/index.html
 
 
 
