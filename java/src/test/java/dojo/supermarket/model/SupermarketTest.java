@@ -115,7 +115,7 @@ class SupermarketTest {
     }
     
     @Test
-    void twoForAmountOneItemOffOffer() {
+    void twoForAmountOneItemExcedesOffer() {
     	  SupermarketCatalog catalog = new FakeCatalog();
           Product soup = new Product("soup", ProductUnit.EACH);
           double unitPrice = 1.20;
