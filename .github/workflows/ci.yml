@@ -22,5 +22,5 @@ jobs:
         cache: maven
 
     - name: Run Unit Tests
-      working-directory: ./java/pom.xml
+      working-directory: /java/pom.xml
       run: mvn test
