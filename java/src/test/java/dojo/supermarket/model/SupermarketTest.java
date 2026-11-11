@@ -185,5 +185,42 @@ class SupermarketTest {
       assertEquals(12.95, receiptItem.totalPrice(),0.01);
       assertEquals(5, receiptItem.quantity());
     }
+    
+    @Test
+    void fiveForAmountOneItemExcedesOffer() {
+  	  SupermarketCatalog catalog = new FakeCatalog();
+      Product deodorant = new Product("deodorant", ProductUnit.EACH);
+      double unitPrice = 2.59;
+      double offerArgument = 10.00;
+      int qtd = 6;
+      int offerQtd =5;
+      double discountAmount = unitPrice * qtd - (offerArgument* 1 + qtd % 5 * unitPrice);
+
+      
+      catalog.addProduct(deodorant, unitPrice);
+      
+      Teller teller = new Teller(catalog);
+      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, offerArgument);
+      
+      ShoppingCart cart = new ShoppingCart();
+      cart.addItemQuantity(deodorant, qtd);
+      
+      Discount fiveForAmount =new Discount(deodorant, offerQtd + " for " + offerArgument, -discountAmount);
+      List<Discount> discountsList = new ArrayList<>();
+      discountsList.add(fiveForAmount);
+
+      Receipt receipt = teller.checksOutArticlesFrom(cart);
+
+      // ASSERT
+      assertEquals(12.59, receipt.getTotalPrice(), 0.01);
+      assertEquals(discountsList, receipt.getDiscounts());
+      assertEquals(1, receipt.getItems().size());
+      
+      ReceiptItem receiptItem = receipt.getItems().get(0);
+      assertEquals(deodorant, receiptItem.product());
+      assertEquals(2.59, receiptItem.price());
+      assertEquals(15.54, receiptItem.totalPrice(),0.01);
+      assertEquals(6, receiptItem.quantity());
+    }
 
 }
