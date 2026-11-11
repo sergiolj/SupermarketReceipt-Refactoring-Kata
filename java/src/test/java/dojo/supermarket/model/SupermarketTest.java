@@ -149,5 +149,41 @@ class SupermarketTest {
           assertEquals(3.60, receiptItem.totalPrice(),0.01);
           assertEquals(3, receiptItem.quantity());
     }
+    
+    @Test
+    void fiveForAmountExactNumberOfOfferItens() {
+  	  SupermarketCatalog catalog = new FakeCatalog();
+      Product deodorant = new Product("deodorant", ProductUnit.EACH);
+      double unitPrice = 2.59;
+      double offerArgument = 10.00;
+      int qtd = 5;
+      double discountAmount = unitPrice * qtd - (offerArgument* 1 + qtd % 5 * unitPrice);
+
+      
+      catalog.addProduct(deodorant, unitPrice);
+      
+      Teller teller = new Teller(catalog);
+      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, offerArgument);
+      
+      ShoppingCart cart = new ShoppingCart();
+      cart.addItemQuantity(deodorant, qtd);
+      
+      Discount twoForAmount =new Discount(deodorant, qtd + " for " + offerArgument, -discountAmount);
+      List<Discount> discountsList = new ArrayList<>();
+      discountsList.add(twoForAmount);
+
+      Receipt receipt = teller.checksOutArticlesFrom(cart);
+
+      // ASSERT
+      assertEquals(10.00, receipt.getTotalPrice(), 0.01);
+      assertEquals(discountsList, receipt.getDiscounts());
+      assertEquals(1, receipt.getItems().size());
+      
+      ReceiptItem receiptItem = receipt.getItems().get(0);
+      assertEquals(deodorant, receiptItem.product());
+      assertEquals(2.59, receiptItem.price());
+      assertEquals(12.95, receiptItem.totalPrice(),0.01);
+      assertEquals(5, receiptItem.quantity());
+    }
 
 }
