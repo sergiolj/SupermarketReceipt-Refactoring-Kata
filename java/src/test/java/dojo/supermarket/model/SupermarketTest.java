@@ -11,6 +11,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SupermarketTest {
+	
+	private static final double DELTA = 0.001;
 
     // Todo: test all kinds of discounts are applied properly
 
@@ -19,27 +21,34 @@ class SupermarketTest {
         SupermarketCatalog catalog = new FakeCatalog();
         Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
         catalog.addProduct(toothbrush, 0.99);
-        Product apples = new Product("apples", ProductUnit.KILO);
-        catalog.addProduct(apples, 1.99);
 
         Teller teller = new Teller(catalog);
         teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, toothbrush, 10.0);
 
         ShoppingCart cart = new ShoppingCart();
-        cart.addItemQuantity(apples, 2.5);
+        cart.addItemQuantity(toothbrush, 10);
+        
         
         // ACT
         Receipt receipt = teller.checksOutArticlesFrom(cart);
-
+        
+        
+        List<Discount> discounts = receipt.getDiscounts();
+        assertEquals(1, discounts.size());
+        Discount discount = discounts.get(0);
+        assertEquals(toothbrush, discount.product());
+        assertEquals("10.0% off", discount.description());
+        assertEquals(-0.99, discount.discountAmount(), DELTA);
+        
+        
         // ASSERT
-        assertEquals(4.975, receipt.getTotalPrice(), 0.01);
-        assertEquals(Collections.emptyList(), receipt.getDiscounts());
+        assertEquals(8.91, receipt.getTotalPrice(), 0.01);
         assertEquals(1, receipt.getItems().size());
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertEquals(apples, receiptItem.product());
-        assertEquals(1.99, receiptItem.price());
-        assertEquals(2.5*1.99, receiptItem.totalPrice());
-        assertEquals(2.5, receiptItem.quantity());
+        assertEquals(toothbrush, receiptItem.product());
+        assertEquals(0.99, receiptItem.price());
+        assertEquals(10*0.99, receiptItem.totalPrice());
+        assertEquals(10, receiptItem.quantity());
 
     }
 
