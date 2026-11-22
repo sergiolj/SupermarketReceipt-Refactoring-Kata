@@ -100,6 +100,30 @@ class SupermarketTest {
     }
     
     @Test
+    void threeForTowOneItemExcedesOffer() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        
+        catalog.addProduct(toothbrush, 0.99);
+    	
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(toothbrush, 4);
+ 
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(2.97, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
+        
+        Discount threeForTwo = receipt.getDiscounts().get(0);
+        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
+
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 3.96, 4);
+    }
+    
+    @Test
     void twoForAmountExactNumberOfOfferItens() {
     	  SupermarketCatalog catalog = new FakeCatalog();
           Product soup = new Product("soup", ProductUnit.EACH);
@@ -219,6 +243,29 @@ class SupermarketTest {
       assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 15.54, 6);
     }
  
+        @Test
+    void fiveForAmountDiscountNotAplliedForFourItems() {
+    	  SupermarketCatalog catalog = new FakeCatalog();
+          Product deodorant = new Product("deodorant", ProductUnit.EACH);
+          
+          catalog.addProduct(deodorant, 2.59);
+          
+          Teller teller = new Teller(catalog);
+          teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, 10.00);
+          
+          ShoppingCart cart = new ShoppingCart();
+          cart.addItemQuantity(deodorant, 4);
+          
+          Receipt receipt = teller.checksOutArticlesFrom(cart);
+          assertEquals(10.36, receipt.getTotalPrice(), DELTA);
+          assertEquals(1, receipt.getItems().size());
+          
+          assertTrue(receipt.getDiscounts().isEmpty());
+         
+          ReceiptItem receiptItem = receipt.getItems().get(0);
+          assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 10.36, 4);
+    }
+    
     @Test
     void emptyCart() {
         SupermarketCatalog catalog = new FakeCatalog();
@@ -261,26 +308,5 @@ class SupermarketTest {
         assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.99, 9.95, 5);
     }
     
-    @Test
-    void fiveForAmountDiscountNotAplliedForFourItems() {
-    	  SupermarketCatalog catalog = new FakeCatalog();
-          Product deodorant = new Product("deodorant", ProductUnit.EACH);
-          
-          catalog.addProduct(deodorant, 2.59);
-          
-          Teller teller = new Teller(catalog);
-          teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, 10.00);
-          
-          ShoppingCart cart = new ShoppingCart();
-          cart.addItemQuantity(deodorant, 4);
-          
-          Receipt receipt = teller.checksOutArticlesFrom(cart);
-          assertEquals(10.36, receipt.getTotalPrice(), DELTA);
-          assertEquals(1, receipt.getItems().size());
-          
-          assertTrue(receipt.getDiscounts().isEmpty());
-         
-          ReceiptItem receiptItem = receipt.getItems().get(0);
-          assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 10.36, 4);
-    }
+
 }
