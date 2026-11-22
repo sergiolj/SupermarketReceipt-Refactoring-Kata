@@ -20,6 +20,13 @@ class SupermarketTest {
 	    assertEquals(amount, d.discountAmount(), DELTA);
 	}
 	
+	private static void assertReceiptItemDescriptionAndPrice(ReceiptItem receiptItem, Product product) {
+        assertEquals(product, receiptItem.product());
+        assertEquals(0.99, receiptItem.price());
+        assertEquals(10*0.99, receiptItem.totalPrice());
+        assertEquals(10, receiptItem.quantity());
+	}
+	
 	
     @Test
     void tenPercentDiscount() {
@@ -36,23 +43,17 @@ class SupermarketTest {
         
         // ACT
         Receipt receipt = teller.checksOutArticlesFrom(cart);
-        
+        assertEquals(8.91, receipt.getTotalPrice(), 0.01);
+        assertEquals(1, receipt.getItems().size());
         
         List<Discount> discounts = receipt.getDiscounts();
         assertEquals(1, discounts.size());
-        Discount discount = discounts.get(0);
-        assertDiscount(discount, toothbrush, discount.description(), DELTA);
-      
         
-        // ASSERT
-        assertEquals(8.91, receipt.getTotalPrice(), 0.01);
-        assertEquals(1, receipt.getItems().size());
+        Discount discount = discounts.get(0);
+        assertDiscount(discount, toothbrush, discount.description(), -0.99);
+        
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertEquals(toothbrush, receiptItem.product());
-        assertEquals(0.99, receiptItem.price());
-        assertEquals(10*0.99, receiptItem.totalPrice());
-        assertEquals(10, receiptItem.quantity());
-
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush);
     }
 
     @Test
