@@ -62,7 +62,7 @@ O sistema não possui interface nem ponto de entrada (`main`); suas funcionalida
 
 Segundo uma pesquisa usando o [Claude.ai](http://Claude.ai) existem diversas técnicas disponíveis para o mapeamento de arquitetura e identificação de módulos em softwares legados. Alguns métodos, voltados para sistemas maiores utilizam ferramentas de software específicas como o SonarQube/SonarLint, PMD e CK (no ambiente Java), essas ferramentas medem a complexidade ciclomática e cognitiva através de métodos e métricas próprias e geram relatórios quantitativos além de permitirem a comparação do antes e depois da refatoração, o problema, nesse caso, é que nosso projeto é pequeno com algumas poucas classes e linhas de código o que irá gerar resultados pouco expressivos com a maioria das classes aparecendo como de baixa complexidade e umas poucas de alta, fato que pode ser percebido apenas com a leitura do código e análise estática manual, que é uma das técnicas mais básicas.
 
-A técnica adotada deve ser adequada ao tamanho do problema. Sendo assim foram consideradas as seguintes abordagens: 1- Leitura de código e análise estática manual, 2- Recuperação de arquitetura por modelos (usando diagramas UML via engenharia reversa), 3- Cartões CRC(Class-Responsibility-Collaborator), 4- Detecção de code smells (catálogo de Fowler - Refactoring) e 4- Análise Dinâmica de testes de caracterização.
+A técnica adotada deve ser adequada ao tamanho do problema. Sendo assim foram consideradas as seguintes abordagens: 1- Leitura de código e análise estática manual, 2- Recuperação de arquitetura por modelos (usando diagramas UML via engenharia reversa), 3- Cartões CRC(Class-Responsibility-Collaborator), 4- Detecção de code smells (catálogo de Fowler - Refactoring) e 5- Análise Dinâmica de testes de caracterização.
 
 Existem diversas outras técnicas, mas as listadas acima parecem se adequar mais ao tamanho do problema apresentado. Dessas as abordagens adotadas foram a 1, 2, 3 e a 4 (Relatório de Débito Técnico) que foi incluída como parte do passo 5 da etapa 1, além da técnica 5 será executada diretamente no repositório a ser refaturado para dar segurança a integridade do algoritmo durante a refatoração.
 
@@ -174,7 +174,7 @@ No algoritmo observado não existe um main e os testes concentram o que se pode 
 
 Foi utilizado o recurso de exibição de diagramas de classes no Intellij para representar todas as classes, seus atributos e métodos.
 
-![](/home/sergiolj/eclipse-workspace/SupermarketReceipt-Refactoring-Kata/java/supermarket.png)
+![Diagrama de classes do sistema legado](supermarket.png)
 
 
 
