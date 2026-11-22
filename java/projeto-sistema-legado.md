@@ -11,6 +11,7 @@
 | Nome                | Matrícula | E-mail                    | Usuário GitHub |
 | ------------------- | --------- | ------------------------- | -------------- |
 | Sérgio Lopes Júnior | 200026817 | sergio.lopes@ucsal.edu.br | sergiolj       |
+| Manuel Bahamonde Boulhosa Neto | _[preencher matrícula]_ | _[preencher e-mail institucional]_ | _[preencher usuário GitHub]_ |
 
 #### Origem do Sistema Legado
 
@@ -32,6 +33,28 @@ A linguagem de programação escolhida foi o Java.
   - Atributo double **unitPrice** primitivo para representar e manipular dinheiro criando erros de arredondamento
   - Atributo double **quantity** primitivo para representar tanto unidades inteiras como representações de peso
   - Classes anêmicas como **Product, ProductQuantity, Offer e Discount** que não possuem nenhuma inteligência ou regra de negócio.
+
+#### Mapeamento das funcionalidades atuais
+
+O sistema não possui interface nem ponto de entrada (`main`); suas funcionalidades são expostas como API de classes Java e exercitadas pelos testes automatizados. O mapeamento abaixo foi feito a partir da leitura do código-fonte e dos testes.
+
+| #    | Funcionalidade                  | Descrição                                                                                                                         | Onde está implementada                        |
+| --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| F-01 | Catálogo de produtos            | Cadastra produtos com preço unitário e consulta o preço de um produto. Interface sem implementação de produção (só `FakeCatalog` nos testes). | `SupermarketCatalog`, `FakeCatalog` (teste)   |
+| F-02 | Tipos de unidade de produto     | Produto vendido por unidade (`EACH`, discreto) ou por peso (`KILO`, fracionado).                                                  | `Product`, `ProductUnit`                      |
+| F-03 | Carrinho de compras             | Adiciona um produto (1 unidade) ou uma quantidade qualquer; mantém cada linha adicionada e a quantidade acumulada por produto.    | `ShoppingCart`, `ProductQuantity`             |
+| F-04 | Cadastro de ofertas especiais   | A caixa registra uma oferta por produto (tipo + valor/quantidade); uma nova oferta para o mesmo produto substitui a anterior.     | `Teller.addSpecialOffer`, `Offer`             |
+| F-05 | Oferta 10% de desconto          | Percentual (valor configurável) aplicado sobre o total do produto, mesmo para uma única unidade.                                  | `ShoppingCart.handleOffers`                   |
+| F-06 | Oferta leve 3, pague 2          | A cada 3 unidades, 1 é gratuita; só se aplica com 3 ou mais unidades.                                                             | `ShoppingCart.handleOffers`                   |
+| F-07 | Oferta 2 por valor fixo         | A cada 2 unidades, preço fixo definido na oferta; só se aplica com 2 ou mais unidades.                                            | `ShoppingCart.handleOffers`                   |
+| F-08 | Oferta 5 por valor fixo         | A cada 5 unidades, preço fixo definido na oferta; só se aplica com 5 ou mais unidades.                                            | `ShoppingCart.handleOffers`                   |
+| F-09 | Fechamento da compra (checkout) | Gera a nota fiscal: uma linha por item adicionado, com preço unitário e total, e aplica as ofertas sobre as quantidades acumuladas. | `Teller.checksOutArticlesFrom`                |
+| F-10 | Nota fiscal                     | Armazena itens e descontos e calcula o total (soma dos itens + descontos, que são valores negativos).                             | `Receipt`, `ReceiptItem`, `Discount`          |
+| F-11 | Impressão da nota               | Gera o texto da nota em colunas: itens, linha de quantidade, descontos e total (quantidade inteira para `EACH`, 3 casas para `KILO`). | `ReceiptPrinter` (em `src/test`)              |
+
+**Fora do escopo atual (não implementado):** ofertas de pacote (*bundles* — 10% ao comprar todos os itens de um conjunto), descrita no README do kata como nova funcionalidade a ser desenvolvida; persistência, interface de usuário e catálogo real.
+
+**Regras de negócio observadas (confirmadas por testes de caracterização):** descontos são registrados como valores negativos; as ofertas consideram a soma das quantidades do mesmo produto no carrinho, mesmo adicionado em linhas separadas; produtos sem oferta ou abaixo do mínimo da oferta pagam o preço cheio.
 
 ## Etapa 2: Engenharia Reversa e Diagnóstico Técnico (Peso: 2,0 pontos)
 
