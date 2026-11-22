@@ -11,7 +11,7 @@
 | Nome                | Matrícula | E-mail                    | Usuário GitHub |
 | ------------------- | --------- | ------------------------- | -------------- |
 | Sérgio Lopes Júnior | 200026817 | sergio.lopes@ucsal.edu.br | sergiolj       |
-| Manuel Bahamonde Boulhosa Neto | _[preencher matrícula]_ | _[preencher e-mail institucional]_ | _[preencher usuário GitHub]_ |
+| Manuel Bahamonde Boulhosa Neto | 200031998 | manuelbahamonde.neto@ucsal.edu.br | noclick11 |
 
 #### Origem do Sistema Legado
 
