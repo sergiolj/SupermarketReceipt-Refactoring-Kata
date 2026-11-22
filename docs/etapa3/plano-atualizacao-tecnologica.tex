@@ -1,0 +1,88 @@
+\input{preambulo}
+\begin{document}
+\capa{Plano de Atualiza\c{c}\~ao Tecnol\'ogica e Estrat\'egias para Evolu\c{c}\~ao Futura}{Etapa 3 -- Refatora\c{c}\~ao Pr\'atica e Evolu\c{c}\~ao Aplicada}
+\tableofcontents\newpage
+
+\section{Introdu\c{c}\~ao e escopo}
+Este documento apresenta o plano de atualiza\c{c}\~ao tecnol\'ogica e as estrat\'egias de evolu\c{c}\~ao futura do sistema legado \textit{SupermarketReceipt Refactoring Kata}, na vers\~ao Java. O sistema simula um caixa de supermercado que fecha uma compra, aplica promo\c{c}\~oes semanais e emite uma nota fiscal. O diagn\'ostico que fundamenta o plano est\'a no Relat\'orio de D\'ebito T\'ecnico da Etapa 2.
+
+A divis\~ao do trabalho da Etapa 3 atribui ao Grupo 1 as classes \code{Teller}, \code{Offer} e \code{SpecialOfferType}, com o desafio de substituir a cadeia condicional do m\'etodo \code{handleOffers} por polimorfismo (padr\~ao \textit{Strategy}). Por isso, o plano detalha o que muda na tecnologia e na evolu\c{c}\~ao do dom\'inio de \textbf{ofertas}, e indica os pontos de integra\c{c}\~ao com os Grupos 2 (carrinho e quantidades) e 3 (nota fiscal e impress\~ao). As etapas descritas s\~ao um \textbf{planejamento}: as datas e as metas abaixo ainda n\~ao foram executadas.
+
+\section{Situa\c{c}\~ao tecnol\'ogica atual}
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}Y}
+\toprule \textbf{Aspecto} & \textbf{Situa\c{c}\~ao observada no reposit\'orio} \\ \midrule
+Linguagem & Java 17 (\code{maven.compiler.release} = 17); \textit{records} e \textit{enums} j\'a utilizados. \\
+Build e depend\^encias & Maven; JUnit Jupiter 5.11.4 e ApprovalTests. \\
+Integra\c{c}\~ao cont\'inua & GitHub Actions executa \code{mvn test} com JDK 17 a cada \textit{push} e \textit{pull request} na \code{main}. \\
+Testes & 37 testes (6 originais e 31 de caracteriza\c{c}\~ao); a cobertura percentual ainda n\~ao foi medida. \\
+An\'alise est\'atica & Inexistente (sem Checkstyle, PMD ou SonarQube no \textit{build}). \\
+Documenta\c{c}\~ao & Nenhum Javadoc nas classes de produ\c{c}\~ao. \\
+Dom\'inio & Valores monet\'arios em \code{double}; ofertas modeladas por um \textit{enum} e uma cadeia de \code{if} no carrinho. \\
+Estrutura & Um \'unico pacote (\code{dojo.supermarket.model}); regras de oferta dentro de \code{ShoppingCart}. \\
+\bottomrule\end{tabularx}
+\caption{Estado tecnol\'ogico do sistema legado.}\end{table}
+
+Um registro relevante do hist\'orico: o fluxo de CI foi alterado de JDK 21 para JDK 17 (\textit{commit} ``change JDK version from 21 to 17 in CI workflow''). A atualiza\c{c}\~ao de vers\~ao proposta adiante precisa, portanto, ser acordada com o grupo e validada no pr\'oprio CI.
+
+\section{Plano de atualiza\c{c}\~ao tecnol\'ogica}
+O plano \'e dividido em fases curtas e independentes. Cada fase termina com todos os testes passando no CI, conforme a recomenda\c{c}\~ao de cobrir o c\'odigo legado com testes de regress\~ao antes de alter\'a-lo \cite{feathers2013}.
+
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{4.1cm}Y}
+\toprule \textbf{Fase} & \textbf{A\c{c}\~ao} & \textbf{Resultado esperado e crit\'erio de aceite} \\ \midrule
+0 & Medir a cobertura com JaCoCo no \textit{build} Maven e publicar o relat\'orio no CI. & N\'umero de refer\^encia ``antes'' registrado; metas de cobertura definidas para as classes de ofertas. \\
+1 & Adicionar an\'alise est\'atica (Checkstyle ou PMD) e manter o Dependabot. & Viola\c{c}\~oes iniciais registradas; novas viola\c{c}\~oes quebram o CI. \\
+2 & Adotar o \textit{Maven Wrapper} e padronizar o JDK. & Qualquer integrante executa \code{./mvnw test} sem instalar o Maven. \\
+3 & Usar recursos do Java 17 na modelagem das ofertas: interface \textit{sealed} para as estrat\'egias, \textit{records} e \textit{switch expressions}. & O conjunto fechado de ofertas fica expl\'icito para o compilador. \\
+4 & (Opcional) Avaliar a migra\c{c}\~ao para o Java 21 LTS e o \textit{pattern matching} em \textit{switch}. & Decis\~ao registrada; migra\c{c}\~ao s\'o se o CI e o ambiente dos integrantes suportarem. \\
+5 & Introduzir o tipo \code{Money} (baseado em \code{BigDecimal}) para o valor das ofertas, em conjunto com os Grupos 2 e 3. & Fim dos erros de arredondamento; testes sem toler\^ancia \code{DELTA}. \\
+6 & Documentar com Javadoc as classes p\'ublicas do pacote de ofertas. & Regras de cada oferta descritas no c\'odigo. \\
+\bottomrule\end{tabularx}
+\caption{Fases da atualiza\c{c}\~ao tecnol\'ogica.}\end{table}
+
+\section{Estrat\'egias para evolu\c{c}\~ao futura}
+\subsection{Ofertas extens\'iveis (aberto/fechado)}
+Hoje, criar um tipo de oferta exige alterar o \textit{enum} e editar o m\'etodo \code{handleOffers}. Com cada oferta implementada por uma estrat\'egia pr\'opria, um novo tipo passa a ser uma nova classe, sem altera\c{c}\~ao nas existentes \cite{gamma2000}. Essa \'e a base para as demais evolu\c{c}\~oes.
+
+\subsection{Ofertas de pacote (\textit{bundles})}
+O pr\'oprio enunciado do kata prev\^e a oferta de pacote: ao comprar todos os itens de um conjunto, o cliente recebe 10\% de desconto sobre o total desses itens, e somente pacotes completos s\~ao descontados. Essa oferta envolve \textbf{v\'arios produtos}, mas o desenho atual associa cada oferta a um \'unico produto (\code{Map<Product, Offer>} no \code{Teller}). A evolu\c{c}\~ao exige que a interface de oferta receba as quantidades de todo o carrinho, e n\~ao s\'o as de um produto. Esse ponto deve ser decidido j\'a no desenho da interface das estrat\'egias, para n\~ao exigir uma segunda refatora\c{c}\~ao.
+
+\subsection{Cadastro de ofertas separado do caixa}
+Atualmente cada \code{Teller} recebe as ofertas uma a uma. Como as promo\c{c}\~oes do supermercado s\~ao as mesmas para todos os caixas, o plano \'e extrair a classe \code{SpecialOffers} (achado L-18), compartilhada entre caixas e com responsabilidade \'unica de guardar e consultar as ofertas.
+
+\subsection{Ofertas por configura\c{c}\~ao e com validade}
+O enunciado informa que as promo\c{c}\~oes mudam toda semana. A evolu\c{c}\~ao natural \'e carregar as ofertas de uma fonte externa (arquivo JSON ou YAML) e acrescentar um per\'iodo de validade a cada oferta, evitando recompilar o sistema a cada semana. Uma etapa posterior pode migrar essa fonte para um banco de dados relacional.
+
+\subsection{Exposi\c{c}\~ao como servi\c{c}o}
+O sistema \'e uma biblioteca com cerca de 280 linhas, sem interface nem ponto de entrada. Uma evolu\c{c}\~ao poss\'ivel \'e exp\^o-lo por uma API HTTP simples para uso por um PDV (ponto de venda). A estrat\'egia de quebra de monolito n\~ao se aplica a um sistema deste tamanho; recomenda-se manter um \textbf{mon\'olito modular}, com pacotes bem separados (modelo, ofertas, \textit{checkout}, nota fiscal), que permite extrair servi\c{c}os no futuro se houver necessidade \cite{sommerville2019}.
+
+\section{Cronograma, riscos e viabilidade}
+As fases 0 a 2 s\~ao de baixo risco e podem ser conclu\'idas em poucos dias. As fases 3 e 5 dependem da refatora\c{c}\~ao do pr\'oprio Grupo 1 e da coordena\c{c}\~ao com os demais grupos. As fases de configura\c{c}\~ao externa, banco de dados e API s\~ao evolu\c{c}\~oes futuras, fora do escopo da entrega da disciplina.
+
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{2cm}Y}
+\toprule \textbf{Risco} & \textbf{Impacto} & \textbf{Mitiga\c{c}\~ao} \\ \midrule
+Mudan\c{c}a de comportamento durante a refatora\c{c}\~ao & Alto & Manter os 37 testes verdes em cada \textit{commit}; incluir teste de equival\^encia entre o c\'odigo antigo e o novo durante a transi\c{c}\~ao. \\
+Conflitos entre grupos nas mesmas classes (\code{ShoppingCart}, \code{Receipt}) & M\'edio & \textit{Pull requests} pequenos e frequentes; combinar antes a interface das estrat\'egias. \\
+Incompatibilidade ao mudar de JDK & M\'edio & Tratar a migra\c{c}\~ao para o Java 21 como opcional e validar no CI. \\
+An\'alise est\'atica gerar muitos alertas iniciais & Baixo & Registrar a linha de base e bloquear apenas novas viola\c{c}\~oes. \\
+Prazo curto da disciplina & M\'edio & Priorizar as fases 0, 3 e 5; adiar configura\c{c}\~ao externa e API. \\
+\bottomrule\end{tabularx}
+\caption{Riscos do plano.}\end{table}
+
+\section{Indicadores de sucesso}
+\begin{itemize}
+\item Complexidade ciclom\'atica do maior m\'etodo do dom\'inio de ofertas: de 13 (\code{handleOffers}) para no m\'aximo 4 em cada estrat\'egia (meta).
+\item Todos os testes de caracteriza\c{c}\~ao mantidos e passando no CI, sem altera\c{c}\~ao de comportamento.
+\item Cobertura medida pelo JaCoCo e registrada antes e depois (a meta num\'erica ser\'a fixada ap\'os a primeira medi\c{c}\~ao).
+\item Inclus\~ao de um novo tipo de oferta sem editar as classes de ofertas existentes.
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com c\'odigo legado}. Porto Alegre: Bookman, 2013.
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padr\~oes de projeto}: solu\c{c}\~oes reutiliz\'aveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+\bibitem{fowler2020} FOWLER, Martin. \textbf{Refatora\c{c}\~ao}: aperfei\c{c}oando o design de c\'odigo existente. 2. ed. S\~ao Paulo: Novatec, 2020.
+\bibitem{sommerville2019} SOMMERVILLE, Ian. \textbf{Engenharia de software}. 10. ed. S\~ao Paulo: Pearson Education do Brasil, 2019.
+\end{thebibliography}
+\end{document}

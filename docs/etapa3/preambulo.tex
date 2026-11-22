@@ -1,0 +1,38 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\usepackage{tgtermes}
+\usepackage[top=3cm,bottom=2cm,left=3cm,right=2cm]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\onehalfspacing
+\sloppy\emergencystretch=3em
+\renewcommand{\contentsname}{Sum\'ario}
+\renewcommand{\tablename}{Tabela}
+\renewcommand{\refname}{Refer\^encias}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\setlist{itemsep=2pt,topsep=4pt}
+\pagestyle{fancy}\fancyhf{}\fancyhead[R]{\small\thepage}\renewcommand{\headrulewidth}{0pt}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\definecolor{cbg}{gray}{0.95}
+\lstset{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{cbg},frame=single,
+  framerule=0.3pt,rulecolor=\color{gray},breaklines=true,columns=fullflexible,
+  keepspaces=true,showstringspaces=false,xleftmargin=2pt,xrightmargin=2pt,
+  language=Java,keywordstyle=\bfseries,commentstyle=\itshape\color{gray}}
+\newcommand{\capa}[2]{%
+\begin{titlepage}\centering\singlespacing
+\includegraphics[width=4.5cm]{../../java/img/logo.png}\\[1.2cm]
+{\large UNIVERSIDADE CAT\'OLICA DO SALVADOR\\ Evolu\c{c}\~ao e Moderniza\c{c}\~ao de Sistemas Legados -- 2026.2}\\[3cm]
+{\Large\bfseries #1}\\[0.8cm]
+{\large #2}\\[1.2cm]
+{\large Projeto: SupermarketReceipt Refactoring Kata (Java)\\ Grupo 1: \code{Teller}, \code{Offer}, \code{SpecialOfferType}}\\[3cm]
+{\large Manuel Bahamonde Boulhosa Neto\\ Matr\'icula 200031998}\vfill
+{\large Salvador\\ Novembro de 2026}
+\end{titlepage}}
