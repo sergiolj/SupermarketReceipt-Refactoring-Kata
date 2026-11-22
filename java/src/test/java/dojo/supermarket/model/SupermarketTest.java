@@ -215,6 +215,27 @@ class SupermarketTest {
         assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.99, 9.95, 5);
     }
     
-    
+    void treeForTowDiscountForTwoItems() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        
+        catalog.addProduct(toothbrush, 0.99);
+    	
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(toothbrush, 2);
+ 
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
+        
+        Discount threeForTwo = receipt.getDiscounts().get(0);
+        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
+
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 1.98, 2);
+    }
     
 }
