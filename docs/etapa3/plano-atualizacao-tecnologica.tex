@@ -9,13 +9,13 @@ Este documento apresenta o plano de atualiza\c{c}\~ao tecnol\'ogica e as estrat\
 A divis\~ao do trabalho da Etapa 3 atribui ao Grupo 1 as classes \code{Teller}, \code{Offer} e \code{SpecialOfferType}, com o desafio de substituir a cadeia condicional do m\'etodo \code{handleOffers} por polimorfismo (padr\~ao \textit{Strategy}). Por isso, o plano detalha o que muda na tecnologia e na evolu\c{c}\~ao do dom\'inio de \textbf{ofertas}, e indica os pontos de integra\c{c}\~ao com os Grupos 2 (carrinho e quantidades) e 3 (nota fiscal e impress\~ao). As etapas descritas s\~ao um \textbf{planejamento}: as datas e as metas abaixo ainda n\~ao foram executadas.
 
 \section{Situa\c{c}\~ao tecnol\'ogica atual}
-\begin{table}[h]\centering\small
+\begin{table}[H]\centering\small
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}Y}
 \toprule \textbf{Aspecto} & \textbf{Situa\c{c}\~ao observada no reposit\'orio} \\ \midrule
 Linguagem & Java 17 (\code{maven.compiler.release} = 17); \textit{records} e \textit{enums} j\'a utilizados. \\
 Build e depend\^encias & Maven; JUnit Jupiter 5.11.4 e ApprovalTests. \\
 Integra\c{c}\~ao cont\'inua & GitHub Actions executa \code{mvn test} com JDK 17 a cada \textit{push} e \textit{pull request} na \code{main}. \\
-Testes & 37 testes (6 originais e 31 de caracteriza\c{c}\~ao); a cobertura percentual ainda n\~ao foi medida. \\
+Testes & Na \'epoca do diagn\'ostico: 37 testes (6 originais e 31 de caracteriza\c{c}\~ao), sem medi\c{c}\~ao de cobertura. Hoje: 57 testes e cobertura medida com JaCoCo (ver se\c{c}\~ao 6). \\
 An\'alise est\'atica & Inexistente (sem Checkstyle, PMD ou SonarQube no \textit{build}). \\
 Documenta\c{c}\~ao & Nenhum Javadoc nas classes de produ\c{c}\~ao. \\
 Dom\'inio & Valores monet\'arios em \code{double}; ofertas modeladas por um \textit{enum} e uma cadeia de \code{if} no carrinho. \\
@@ -28,7 +28,7 @@ Um registro relevante do hist\'orico: o fluxo de CI foi alterado de JDK 21 para 
 \section{Plano de atualiza\c{c}\~ao tecnol\'ogica}
 O plano \'e dividido em fases curtas e independentes. Cada fase termina com todos os testes passando no CI, conforme a recomenda\c{c}\~ao de cobrir o c\'odigo legado com testes de regress\~ao antes de alter\'a-lo \cite{feathers2013}.
 
-\begin{table}[h]\centering\small
+\begin{table}[H]\centering\small
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{4.1cm}Y}
 \toprule \textbf{Fase} & \textbf{A\c{c}\~ao} & \textbf{Resultado esperado e crit\'erio de aceite} \\ \midrule
 0 & Medir a cobertura com JaCoCo no \textit{build} Maven e publicar o relat\'orio no CI. & N\'umero de refer\^encia ``antes'' registrado; metas de cobertura definidas para as classes de ofertas. \\
@@ -60,10 +60,10 @@ O sistema \'e uma biblioteca com cerca de 280 linhas, sem interface nem ponto de
 \section{Cronograma, riscos e viabilidade}
 As fases 0 a 2 s\~ao de baixo risco e podem ser conclu\'idas em poucos dias. As fases 3 e 5 dependem da refatora\c{c}\~ao do pr\'oprio Grupo 1 e da coordena\c{c}\~ao com os demais grupos. As fases de configura\c{c}\~ao externa, banco de dados e API s\~ao evolu\c{c}\~oes futuras, fora do escopo da entrega da disciplina.
 
-\begin{table}[h]\centering\small
+\begin{table}[H]\centering\small
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{2cm}Y}
 \toprule \textbf{Risco} & \textbf{Impacto} & \textbf{Mitiga\c{c}\~ao} \\ \midrule
-Mudan\c{c}a de comportamento durante a refatora\c{c}\~ao & Alto & Manter os 37 testes verdes em cada \textit{commit}; incluir teste de equival\^encia entre o c\'odigo antigo e o novo durante a transi\c{c}\~ao. \\
+Mudan\c{c}a de comportamento durante a refatora\c{c}\~ao & Alto & Manter todos os testes verdes em cada \textit{commit}; incluir teste de equival\^encia entre o c\'odigo antigo e o novo durante a transi\c{c}\~ao. \\
 Conflitos entre grupos nas mesmas classes (\code{ShoppingCart}, \code{Receipt}) & M\'edio & \textit{Pull requests} pequenos e frequentes; combinar antes a interface das estrat\'egias. \\
 Incompatibilidade ao mudar de JDK & M\'edio & Tratar a migra\c{c}\~ao para o Java 21 como opcional e validar no CI. \\
 An\'alise est\'atica gerar muitos alertas iniciais & Baixo & Registrar a linha de base e bloquear apenas novas viola\c{c}\~oes. \\
@@ -71,12 +71,24 @@ Prazo curto da disciplina & M\'edio & Priorizar as fases 0, 3 e 5; adiar configu
 \bottomrule\end{tabularx}
 \caption{Riscos do plano.}\end{table}
 
+\section{Andamento do plano}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{3.2cm}Y}
+\toprule \textbf{Fase} & \textbf{Situa\c{c}\~ao} & \textbf{Registro} \\ \midrule
+0 & Conclu\'ida & JaCoCo no \code{pom.xml}. Linha de base: 98,9\% das linhas (88 de 89) e 100\% dos \textit{branches} (28 de 28). Ap\'os a refatora\c{c}\~ao: 98,9\% (93 de 94) e 100\% (16 de 16). \\
+1, 2 & Pendentes & An\'alise est\'atica e Maven Wrapper ainda n\~ao adotados. \\
+3 & Alterada & Interface \textit{sealed} \textbf{n\~ao} foi usada: um conjunto fechado de ofertas contradiz o objetivo de extensibilidade, e o teste com lambda (\code{TellerTest}) mostra uma oferta nova criada sem alterar o c\'odigo existente. Foram usados \textit{records} e \textit{switch expressions}. \\
+4, 5 & Pendentes & Java 21 e tipo \code{Money}, este \'ultimo em conjunto com os Grupos 2 e 3. \\
+6 & Parcial & Javadoc nas seis classes novas de ofertas; \code{Teller} e \code{SpecialOfferType} ainda sem. \\
+\bottomrule\end{tabularx}
+\caption{Situa\c{c}\~ao das fases ap\'os a refatora\c{c}\~ao do Grupo 1.}\end{table}
+
 \section{Indicadores de sucesso}
 \begin{itemize}
-\item Complexidade ciclom\'atica do maior m\'etodo do dom\'inio de ofertas: de 13 (\code{handleOffers}) para no m\'aximo 4 em cada estrat\'egia (meta).
+\item Complexidade ciclom\'atica do maior m\'etodo do dom\'inio de ofertas: de 13 (\code{handleOffers}) para no m\'aximo 4 em cada estrat\'egia (meta \textbf{atingida}: o maior valor atual \'e 4, no \code{switch} da f\'abrica).
 \item Todos os testes de caracteriza\c{c}\~ao mantidos e passando no CI, sem altera\c{c}\~ao de comportamento.
-\item Cobertura medida pelo JaCoCo e registrada antes e depois (a meta num\'erica ser\'a fixada ap\'os a primeira medi\c{c}\~ao).
-\item Inclus\~ao de um novo tipo de oferta sem editar as classes de ofertas existentes.
+\item Cobertura medida pelo JaCoCo e registrada antes e depois (\textbf{atingido}: 98,9\% das linhas e 100\% dos \textit{branches} nas duas medi\c{c}\~oes).
+\item Inclus\~ao de um novo tipo de oferta sem editar as classes de ofertas existentes (\textbf{atingido}, demonstrado em \code{TellerTest}).
 \end{itemize}
 
 \begin{thebibliography}{9}\small
