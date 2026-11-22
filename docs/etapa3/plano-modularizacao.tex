@@ -1,0 +1,153 @@
+\input{preambulo}
+\begin{document}
+\capa{Plano de Modulariza\c{c}\~ao e Melhorias de Legibilidade e Complexidade}{Etapa 3 -- Refatora\c{c}\~ao Pr\'atica e Evolu\c{c}\~ao Aplicada}
+\tableofcontents\newpage
+
+\section{Introdu\c{c}\~ao e escopo}
+Este plano descreve como as classes \code{Teller}, \code{Offer} e \code{SpecialOfferType} (Grupo 1) ser\~ao modularizadas, e como a l\'ogica de c\'alculo das promo\c{c}\~oes, hoje concentrada no m\'etodo \code{ShoppingCart.handleOffers}, ser\'a substitu\'ida por polimorfismo, com o padr\~ao \textit{Strategy} \cite{gamma2000}. O objetivo \'e reduzir a complexidade ciclom\'atica e melhorar a legibilidade sem alterar o comportamento, seguindo o cat\'alogo de refatora\c{c}\~oes de Fowler \cite{fowler2020}. Os trechos de c\'odigo da se\c{c}\~ao 4 s\~ao uma \textbf{proposta de projeto}, ainda n\~ao implementada.
+
+\section{Ponto de partida}
+O diagn\'ostico da Etapa 2 registrou, por contagem manual, os seguintes dados sobre o dom\'inio de ofertas:
+
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{6.2cm}Y}
+\toprule \textbf{Indicador atual} & \textbf{Valor e achados relacionados} \\ \midrule
+Complexidade ciclom\'atica de \code{handleOffers} & 13 (12 decis\~oes); acima do limite usual de 10 (L-04). \\
+Testes do tipo de oferta no mesmo m\'etodo & 6 (\code{THREE_FOR_TWO} e \code{FIVE_FOR_AMOUNT} testados duas vezes cada) (L-07, L-19). \\
+Depend\^encias de \code{ShoppingCart} e de \code{Teller} & 7 tipos cada um (L-20). \\
+Constantes 2, 3 e 5 repetidas como vari\'avel \code{x} e como literais & L-21. \\
+Nomes pouco expressivos (\code{x}, \code{numberOfXs}, \code{quantityAsInt}) & L-06, L-09, L-11. \\
+Cadastro de ofertas dentro do \code{Teller} & L-18. \\
+Valor da oferta ignorado no ``3 por 2'' & L-24. \\
+Rede de seguran\c{c}a & 37 testes passando (6 originais e 31 de caracteriza\c{c}\~ao). \\
+\bottomrule\end{tabularx}
+\caption{Indicadores de partida do dom\'inio de ofertas.}\end{table}
+
+\section{Arquitetura-alvo}
+\subsection{Componentes e pacotes propostos}
+A proposta separa a regra de cada promo\c{c}\~ao do carrinho e do caixa. Os pacotes abaixo indicam o destino de cada classe; a coluna ``Grupo'' mostra quem \'e respons\'avel pela mudan\c{c}a, para coordenar os \textit{pull requests}.
+
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}p{5.6cm}>{\centering\arraybackslash}p{1.2cm}Y}
+\toprule \textbf{Pacote} & \textbf{Classes} & \textbf{Grupo} & \textbf{Responsabilidade} \\ \midrule
+\code{...model} & \code{Product}, \code{ProductUnit}, \code{ProductQuantity} & 2 & Dados de produto e quantidade. \\
+\code{...offer} & \code{OfferStrategy}, \code{PercentDiscountOffer}, \code{ThreeForTwoOffer}, \code{QuantityForAmountOffer}, \code{Offer}, \code{SpecialOfferType}, \code{SpecialOffers} & 1 & Regras das promo\c{c}\~oes e cadastro. \\
+\code{...checkout} & \code{Teller}, \code{ShoppingCart} & 1 e 2 & Fechamento da compra. \\
+\code{...receipt} & \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter} & 3 & Nota fiscal e impress\~ao. \\
+\bottomrule\end{tabularx}
+\caption{Pacotes-alvo (\code{...} = \code{dojo.supermarket}).}\end{table}
+
+\subsection{Desenho das estrat\'egias de oferta}
+\begin{itemize}
+\item \code{OfferStrategy}: interface com o m\'etodo que calcula o desconto de um produto, devolvendo \code{Optional<Discount>} (vazio quando a oferta n\~ao se aplica).
+\item \code{PercentDiscountOffer}: desconto percentual (oferta ``10\% de desconto'' com percentual configur\'avel).
+\item \code{ThreeForTwoOffer}: a cada 3 unidades, 1 gratuita.
+\item \code{QuantityForAmountOffer}: \textit{n} unidades por um valor fixo; um \'unico tipo atende \`as ofertas ``2 por valor'' e ``5 por valor'', pois a \'unica diferen\c{c}a entre elas \'e o n\'umero de unidades.
+\item \code{Offer}: associa um produto \`a sua estrat\'egia (o campo \code{fixedValueOrQuantity} deixa de existir).
+\item \code{SpecialOffers}: guarda as ofertas por produto e calcula os descontos de um carrinho; extra\'ida do \code{Teller} (L-18) e compartilh\'avel entre caixas.
+\item \code{SpecialOfferType}: mantido como chave de uma f\'abrica (\code{OfferStrategies.from(tipo, valor)}), para que a API p\'ublica \code{Teller.addSpecialOffer} e os testes existentes continuem funcionando durante a migra\c{c}\~ao.
+\end{itemize}
+Para n\~ao inviabilizar a futura oferta de pacote (ver o Plano de Atualiza\c{c}\~ao Tecnol\'ogica), a interface deve ser definida em um ponto de decis\~ao com o grupo: receber as quantidades de todo o carrinho, e n\~ao s\'o as de um produto.
+
+\section{Antes e depois}
+\subsection{Antes: l\'ogica de oferta no carrinho}
+Trecho reduzido do c\'odigo atual de \code{ShoppingCart.handleOffers}, em que o c\'alculo do ``3 por 2'' depende de vari\'aveis calculadas antes de v\'arios outros \code{if}:
+\begin{lstlisting}
+int x = 1;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO) {
+    x = 3;
+} else if (offer.offerType() == SpecialOfferType.TWO_FOR_AMOUNT) {
+    x = 2;
+    if (quantityAsInt >= 2) { /* ... calcula e cria o Discount ... */ }
+} if (offer.offerType() == SpecialOfferType.FIVE_FOR_AMOUNT) {
+    x = 5;
+}
+int numberOfXs = quantityAsInt / x;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO && quantityAsInt > 2) {
+    double discountAmount = quantity * unitPrice
+        - ((numberOfXs * 2 * unitPrice) + quantityAsInt % 3 * unitPrice);
+    discount = new Discount(p, "3 for 2", -discountAmount);
+}
+\end{lstlisting}
+
+\subsection{Depois (proposta): uma classe por oferta}
+\begin{lstlisting}
+public interface OfferStrategy {
+    Optional<Discount> discountFor(Product product, double quantity, double unitPrice);
+}
+
+public record ThreeForTwoOffer() implements OfferStrategy {
+    private static final int GROUP_SIZE = 3;
+    private static final int PAID_IN_GROUP = 2;
+
+    @Override
+    public Optional<Discount> discountFor(Product product, double quantity, double unitPrice) {
+        int units = (int) quantity;
+        if (units < GROUP_SIZE) return Optional.empty();
+        int completeGroups = units / GROUP_SIZE;
+        int leftover = units % GROUP_SIZE;
+        double payable = completeGroups * PAID_IN_GROUP * unitPrice + leftover * unitPrice;
+        return Optional.of(new Discount(product, "3 for 2", -(quantity * unitPrice - payable)));
+    }
+}
+
+public record QuantityForAmountOffer(int groupSize, double amount) implements OfferStrategy {
+    @Override
+    public Optional<Discount> discountFor(Product product, double quantity, double unitPrice) {
+        int units = (int) quantity;
+        if (units < groupSize) return Optional.empty();
+        double payable = amount * (units / groupSize) + (units % groupSize) * unitPrice;
+        return Optional.of(new Discount(product, groupSize + " for " + amount,
+                                        -(unitPrice * quantity - payable)));
+    }
+}
+\end{lstlisting}
+As f\'ormulas reproduzem exatamente as do c\'odigo legado, incluindo os textos das descri\c{c}\~oes (``3 for 2'', ``2 for 1.5'', ``5 for 3.99''), o que \'e verificado pelos testes de caracteriza\c{c}\~ao j\'a existentes. O \code{handleOffers} passa a apenas percorrer os produtos e delegar o c\'alculo \`a estrat\'egia da oferta correspondente.
+
+\section{Sequ\c{c}\~ao de refatora\c{c}\~oes}
+Cada passo \'e um \textit{commit} pequeno, com os 37 testes verdes antes de seguir, no estilo de migra\c{c}\~ao gradual \cite{feathers2013}.
+\begin{enumerate}
+\item Criar a interface \code{OfferStrategy} e \code{PercentDiscountOffer}, sem us\'a-las ainda (\textit{Extract Interface}).
+\item Criar \code{ThreeForTwoOffer} e \code{QuantityForAmountOffer} e escrever testes unit\'arios parametrizados para cada uma, comparando o resultado com o do c\'odigo legado para as mesmas entradas (teste de equival\^encia).
+\item Criar a f\'abrica \code{OfferStrategies.from(tipo, valor)} e fazer \code{Offer} guardar a estrat\'egia (\textit{Replace Conditional with Polymorphism}).
+\item Fazer \code{handleOffers} delegar \`a estrat\'egia e remover os blocos \code{if} antigos e as vari\'aveis \code{x}, \code{numberOfXs} e \code{quantityAsInt} (\textit{Remove Dead Code}); este passo \'e combinado com o Grupo 2, dono do \code{ShoppingCart}.
+\item Extrair \code{SpecialOffers} do \code{Teller} (\textit{Extract Class}), resolvendo o achado L-18.
+\item Renomear \code{fixedValueOrQuantity} e remover o par\^ametro ignorado do ``3 por 2'' (\textit{Rename Field}, \textit{Remove Parameter}) (L-24).
+\item Mover as classes para o pacote \code{offer} (\textit{Move Class}) e documentar com Javadoc.
+\end{enumerate}
+
+\section{Melhorias de legibilidade}
+\begin{itemize}
+\item Eliminar nomes gen\'ericos (\code{x}, \code{numberOfXs}) em favor de nomes que descrevem o dom\'inio (\code{GROUP_SIZE}, \code{completeGroups}).
+\item Substituir as constantes 2, 3 e 5 repetidas por constantes nomeadas ou por par\^ametros da estrat\'egia (L-21).
+\item Manter m\'etodos curtos, com uma \'unica responsabilidade e sem aninhamento profundo \cite{martin2011}.
+\item Documentar com Javadoc cada estrat\'egia, descrevendo a regra da promo\c{c}\~ao e os casos-limite (por exemplo, abaixo do m\'inimo n\~ao h\'a desconto).
+\item Nomear os testes pelo comportamento, como j\'a feito nos testes de caracteriza\c{c}\~ao.
+\end{itemize}
+
+\section{Metas e verifica\c{c}\~ao}
+\begin{table}[h]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.6cm}>{\centering\arraybackslash}p{2.1cm}>{\centering\arraybackslash}p{2.1cm}Y}
+\toprule \textbf{Indicador} & \textbf{Antes} & \textbf{Meta} & \textbf{Como medir} \\ \midrule
+Complexidade do maior m\'etodo de ofertas & 13 & $\le 4$ & Contagem de decis\~oes por m\'etodo (ou PMD). \\
+Tipos de oferta testados no mesmo m\'etodo & 6 & 0 & Revis\~ao de c\'odigo. \\
+Depend\^encias de \code{Teller} & 7 & reduzir & Contagem de tipos usados. \\
+Classes com Javadoc no pacote de ofertas & 0 & todas & Revis\~ao de c\'odigo. \\
+Testes passando & 37 & 37 ou mais & \code{mvn test} no CI. \\
+\bottomrule\end{tabularx}
+\caption{Metas da modulariza\c{c}\~ao (valores ``Antes'' medidos na Etapa 2; metas a confirmar ao final).}\end{table}
+
+\section{Riscos e depend\^encias entre grupos}
+\begin{itemize}
+\item \textbf{Altera\c{c}\~ao simult\^anea de \code{ShoppingCart}:} o passo 4 depende do Grupo 2, que tamb\'em refatora o carrinho (estado duplicado e tipo de quantidade). Mitiga\c{c}\~ao: combinar a assinatura de \code{OfferStrategy} antes e abrir \textit{pull requests} pequenos.
+\item \textbf{Tipo de quantidade e de dinheiro:} se o Grupo 2 trocar \code{double} por um tipo de quantidade, e o Grupo 3 por \code{Money}, a interface das estrat\'egias precisar\'a ser ajustada. Mitiga\c{c}\~ao: concentrar essa mudan\c{c}a em um \'unico \textit{commit} posterior.
+\item \textbf{Regress\~ao silenciosa:} mitigada pelos testes de caracteriza\c{c}\~ao e pelo teste de equival\^encia do passo 2.
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+\bibitem{fowler2020} FOWLER, Martin. \textbf{Refatora\c{c}\~ao}: aperfei\c{c}oando o design de c\'odigo existente. 2. ed. S\~ao Paulo: Novatec, 2020.
+\bibitem{martin2011} MARTIN, Robert C. \textbf{C\'odigo limpo}: habilidades pr\'aticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com c\'odigo legado}. Porto Alegre: Bookman, 2013.
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padr\~oes de projeto}: solu\c{c}\~oes reutiliz\'aveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+\end{thebibliography}
+\end{document}
