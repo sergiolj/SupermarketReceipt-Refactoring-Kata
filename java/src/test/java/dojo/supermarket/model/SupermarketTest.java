@@ -173,4 +173,22 @@ class SupermarketTest {
       assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 15.54, 6);
     }
  
+    @Test
+    void emptyCart() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        catalog.addProduct(toothbrush, 0.99);
+        
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, toothbrush, 10.0);
+        
+        ShoppingCart cart = new ShoppingCart();
+        
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(0, receipt.getTotalPrice(), DELTA);
+        assertTrue(receipt.getItems().isEmpty());
+        assertTrue(receipt.getDiscounts().isEmpty());  
+    }
+    
+    
 }
