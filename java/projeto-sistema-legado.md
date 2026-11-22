@@ -311,7 +311,7 @@ Contagem manual de V(G) = pontos de decisão + 1:
 
 | Método | Decisões | V(G) | Avaliação |
 | ------ | -------- | ---- | --------- |
-| `ShoppingCart.handleOffers` | 12 (laço, `containsKey`, 4 tipos de oferta, 2 limites mínimos, 2 operadores `&&`, teste de desconto nulo) | **13** | Alta (acima de 10) |
+| `ShoppingCart.handleOffers` | 12 (laço, `containsKey`, 6 testes do tipo de oferta, 3 limites mínimos de quantidade, teste de desconto nulo; cada `&&` conta como uma decisão) | **13** | Alta (acima de 10) |
 | `ReceiptPrinter.printReceipt` | 2 laços | 3 | Baixa |
 | `ShoppingCart.addItemQuantity` | 1 | 2 | Baixa |
 | `Teller.addItensToReceipt` | 1 laço | 2 | Baixa |
@@ -334,7 +334,7 @@ Um único método concentra a complexidade do sistema. Cada nova oferta (como o 
 - **Quantidade:** um único `double` representa unidades e peso, com *cast* para `int` dentro das regras (L-05).
 - **Encapsulamento:** classes anêmicas e coleção mutável exposta (L-13, L-22).
 - **Estrutura:** pacote único e classe de apresentação em `src/test` (L-23).
-- **Rede de segurança:** o legado começou com um único teste efetivo; agora há 32 testes de caracterização cobrindo os quatro tipos de oferta, o carrinho, a nota e a impressão. Esse conjunto reduz o risco da refatoração (FEATHERS, 2013), embora a cobertura percentual ainda não tenha sido medida.
+- **Rede de segurança:** o legado começou com um único teste efetivo; agora há 37 testes (6 originais e 31 de caracterização) cobrindo os quatro tipos de oferta, o carrinho, a nota e a impressão. Esse conjunto reduz o risco da refatoração (FEATHERS, 2013), embora a cobertura percentual ainda não tenha sido medida.
 
 #### Síntese e priorização
 
