@@ -190,5 +190,31 @@ class SupermarketTest {
         assertTrue(receipt.getDiscounts().isEmpty());  
     }
     
+    @Test
+    void offerForProductNotInCart() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        catalog.addProduct(toothbrush, 0.99);
+
+        Product soup = new Product("soup", ProductUnit.EACH);
+        catalog.addProduct(soup, 1.99);
+        
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, toothbrush, 10.0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(soup, 5);
+        
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(9.95, receipt.getTotalPrice(), DELTA);
+        assertEquals(1, receipt.getItems().size());
+        
+        assertTrue(receipt.getDiscounts().isEmpty());
+        
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.99, 9.95, 5);
+    }
+    
+    
     
 }
