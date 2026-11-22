@@ -62,7 +62,7 @@ O sistema não possui interface nem ponto de entrada (`main`); suas funcionalida
 
 Segundo uma pesquisa usando o [Claude.ai](http://Claude.ai) existem diversas técnicas disponíveis para o mapeamento de arquitetura e identificação de módulos em softwares legados. Alguns métodos, voltados para sistemas maiores utilizam ferramentas de software específicas como o SonarQube/SonarLint, PMD e CK (no ambiente Java), essas ferramentas medem a complexidade ciclomática e cognitiva através de métodos e métricas próprias e geram relatórios quantitativos além de permitirem a comparação do antes e depois da refatoração, o problema, nesse caso, é que nosso projeto é pequeno com algumas poucas classes e linhas de código o que irá gerar resultados pouco expressivos com a maioria das classes aparecendo como de baixa complexidade e umas poucas de alta, fato que pode ser percebido apenas com a leitura do código e análise estática manual, que é uma das técnicas mais básicas.
 
-A técnica adotada deve ser adequada ao tamanho do problema. Sendo assim foram consideradas as seguintes abordagens: 1- Leitura de código e análise estática manual, 2- Recuperação de arquitetura por modelos (usando diagramas UML via engenharia reversa), 3- Cartões CRC(Class-Responsibility-Collaborator), 4- Detecção de code smells (catálogo de Fowler - Refactoring) e 4- Análise Dinâmica de testes de caracterização.
+A técnica adotada deve ser adequada ao tamanho do problema. Sendo assim foram consideradas as seguintes abordagens: 1- Leitura de código e análise estática manual, 2- Recuperação de arquitetura por modelos (usando diagramas UML via engenharia reversa), 3- Cartões CRC(Class-Responsibility-Collaborator), 4- Detecção de code smells (catálogo de Fowler - Refactoring) e 5- Análise Dinâmica de testes de caracterização.
 
 Existem diversas outras técnicas, mas as listadas acima parecem se adequar mais ao tamanho do problema apresentado. Dessas as abordagens adotadas foram a 1, 2, 3 e a 4 (Relatório de Débito Técnico) que foi incluída como parte do passo 5 da etapa 1, além da técnica 5 será executada diretamente no repositório a ser refaturado para dar segurança a integridade do algoritmo durante a refatoração.
 
@@ -170,11 +170,55 @@ No algoritmo observado não existe um main e os testes concentram o que se pode 
 | L-17   | `ReceiptItem`                                   | importe desnecessário                                                                                                                                                                        | Long Parameter List       | Verificar                                                           |
 | L-18   | `Teller.addSpecialOffer` (linhas 16-17)         | A caixa tem que receber a informação de que existe uma oferta de um produto, mas isso não deveria ser parte do catálogo, porque assim cada caixa tem que receber todas as ofertas uma a uma. | Large Class               | Extract Class                                                       |
 
+**Atualização dos achados (código da `main` no commit `9aa8f7e`, após os testes de caracterização):**
+
+| ID   | Situação | Observação |
+| ---- | -------- | ---------- |
+| L-01 | Resolvido | O campo `argument` foi renomeado para `fixedValueOrQuantity` em `Offer`. |
+| L-07 | Reclassificado | Os testes de caracterização provam que `THREE_FOR_TWO` e `FIVE_FOR_AMOUNT` **estão implementadas** e funcionam (3 por 2 com 4 e 6 itens; 5 por valor com 5, 6 e 10 itens). O problema real é de legibilidade: o cálculo está espalhado em blocos `if` separados que testam o mesmo tipo de oferta mais de uma vez. |
+| L-13 | Pendente | `Product` e `ProductQuantity` continuam como dois records na `main`. |
+| L-16 | Pendente | `Receipt.addProduct` ainda recebe quatro parâmetros em vez de um `ReceiptItem`. |
+| L-17 | Pendente | `ReceiptItem` ainda importa `java.util.Objects` sem usar. |
+
+**Novos achados da revisão com testes de caracterização:**
+
+| ID   | Local | Achado | Categoria | Refatoração sugerida |
+| ---- | ----- | ------ | --------- | -------------------- |
+| L-19 | `ShoppingCart.handleOffers` | O bloco de `FIVE_FOR_AMOUNT` começa com `} if (` logo após o `else if` anterior, sem `else`: a estrutura sugere uma cadeia exclusiva, mas os blocos seguintes são `if` independentes. | Defeito Potencial / Legibilidade | Decompose Conditional, Replace Conditional with Polymorphism |
+| L-20 | `ShoppingCart.handleOffers` | O método lê dados de `Offer`, consulta o preço no catálogo e altera `Receipt` (`addDiscount`): usa mais dados de outras classes do que da própria. | Feature Envy | Move Method |
+| L-21 | `handleOffers` (`x`, `% 2`, `% 3`, `% 5`) | Os números 2, 3 e 5 aparecem repetidos, ora na variável `x`, ora fixos nas contas de resto, e podem ficar fora de sincronia. | Números Mágicos / Duplicação | Replace Magic Literal, Extract Variable |
+| L-22 | `Receipt.getDiscounts()` | Devolve a lista interna mutável, ao contrário de `getItems()`, que devolve uma visão imutável. | Encapsulamento fraco | Encapsulate Collection |
+| L-23 | `ReceiptPrinter` | A classe de apresentação da nota está em `src/test`, fora do código de produção. | Estrutura do projeto | Move Class |
+| L-24 | `THREE_FOR_TWO` / `Offer.fixedValueOrQuantity` | O valor da oferta é ignorado no 3 por 2, mas é obrigatório informar algum (o teste original passa o preço unitário). A API é ambígua. | Nome Misterioso / API enganosa | Introduce Parameter Object, Replace Parameter with Explicit Methods |
+| L-25 | `SupermarketCatalog.getUnitPrice` | O contrato não define o que acontece com produto inexistente (o `FakeCatalog` lança `NullPointerException` por unboxing de `null`). | Tratamento de erro ausente | Introduce Special Case, lançar exceção de domínio |
+| L-26 | `java/bin/pom.xml` | Arquivo gerado duplicado versionado no repositório. | Lixo no repositório | Remove Dead Code |
+
 #### 3.2 Recuperação de arquitetura por modelos
 
 Foi utilizado o recurso de exibição de diagramas de classes no Intellij para representar todas as classes, seus atributos e métodos.
 
-![](/home/sergiolj/eclipse-workspace/SupermarketReceipt-Refactoring-Kata/java/supermarket.png)
+![Diagrama de classes do sistema legado](supermarket.png)
+
+**Análise do diagrama e módulos identificados.** O sistema tem **uma única camada física**: todas as 11 classes de produção (202 linhas) ficam no pacote `dojo.supermarket.model`, mais a classe de impressão (`ReceiptPrinter`, 79 linhas) em `src/test`. Do ponto de vista lógico, é possível identificar cinco componentes:
+
+| Componente | Classes | Papel |
+| ---------- | ------- | ----- |
+| Dados de domínio | `Product`, `ProductUnit`, `ProductQuantity`, `Offer`, `SpecialOfferType`, `Discount`, `ReceiptItem` | Records e enums sem comportamento. |
+| Contrato de catálogo | `SupermarketCatalog` | Única interface do sistema; a implementação de produção não existe. |
+| Orquestração | `Teller` | Guarda as ofertas, usa o catálogo e produz a nota. |
+| Regras de promoção | `ShoppingCart.handleOffers` | Concentra todo o cálculo de descontos dentro do carrinho. |
+| Nota fiscal e apresentação | `Receipt`, `ReceiptPrinter` | Acumula itens e descontos; formata o texto de saída. |
+
+Dependências observadas (seta = "depende de"):
+
+```
+Teller ──► ShoppingCart ──► Receipt ──► ReceiptItem, Discount
+  │             │  └──────► Offer, SpecialOfferType, Discount, ProductQuantity
+  └──► SupermarketCatalog ◄─┘
+ReceiptPrinter ──► Receipt, ReceiptItem, Discount, ProductUnit
+```
+
+A leitura do diagrama mostra que `ShoppingCart` é o ponto de acoplamento do sistema: depende de sete tipos (`Product`, `ProductQuantity`, `Receipt`, `Offer`, `Discount`, `SpecialOfferType` e `SupermarketCatalog`) e é a única classe que decide regras de negócio. O `Teller` também depende de sete tipos, mas apenas repassa dados. As demais classes são folhas que não dependem de ninguém (exceto `Receipt`, `ReceiptItem` e `Discount`, que se referem a `Product`). Não há dependências circulares.
 
 
 
@@ -242,6 +286,65 @@ Ao olhar para cada cartão você enxerga visualmente o problema arquitetural sem
 | Imprime um produto                     | ReceiptItem                                 |
 | Imprime o desconto                     | Discount                                    |
 | Imprime o total da nota                | Receipt                                     |
+
+### Relatório de Débito Técnico
+
+O diagnóstico abaixo consolida os achados L-01 a L-26 nas cinco dimensões exigidas. As métricas foram obtidas por **contagem manual** sobre o código da `main`, o que é adequado ao tamanho do sistema (cerca de 280 linhas); ferramentas como SonarQube, PMD ou CK poderão ser usadas na Etapa 3 para comparar o antes e o depois.
+
+#### Acoplamento
+
+- `ShoppingCart` depende de 7 tipos e é o único lugar com regra de negócio; `Teller` depende de 7 tipos (L-20).
+- O carrinho altera diretamente a nota fiscal (`receipt.addDiscount`) e consulta o catálogo: *Feature Envy* e violação do princípio da responsabilidade única.
+- `Teller` recebe as ofertas, uma a uma, em cada caixa, e as repassa ao carrinho a cada checkout (L-18).
+- Não há dependências circulares, mas também não há abstrações entre as classes: tudo é concreto, exceto o catálogo.
+
+#### Duplicação
+
+- O mesmo tipo de oferta é testado em mais de um `if` do `handleOffers`: `THREE_FOR_TWO` e `FIVE_FOR_AMOUNT` aparecem duas vezes cada (L-07).
+- A fórmula de desconto `unitPrice * quantity - total` e a criação de `Discount` com sinal negativo se repetem em quatro blocos.
+- As constantes 2, 3 e 5 aparecem como variável `x` e como literais nas contas de resto (L-21).
+- Nos testes originais, os seis cenários repetem o mesmo preparo (catálogo, produto, caixa, carrinho). Os novos testes de caracterização usam um `setUp` comum para reduzir isso.
+
+#### Complexidade ciclomática
+
+Contagem manual de V(G) = pontos de decisão + 1:
+
+| Método | Decisões | V(G) | Avaliação |
+| ------ | -------- | ---- | --------- |
+| `ShoppingCart.handleOffers` | 12 (laço, `containsKey`, 6 testes do tipo de oferta, 3 limites mínimos de quantidade, teste de desconto nulo; cada `&&` conta como uma decisão) | **13** | Alta (acima de 10) |
+| `ReceiptPrinter.printReceipt` | 2 laços | 3 | Baixa |
+| `ShoppingCart.addItemQuantity` | 1 | 2 | Baixa |
+| `Teller.addItensToReceipt` | 1 laço | 2 | Baixa |
+| `ReceiptPrinter.presentReceiptItem` e `presentQuantity` | 1 cada | 2 | Baixa |
+| Demais métodos | 0 | 1 | Baixa |
+
+Um único método concentra a complexidade do sistema. Cada nova oferta (como o *bundle* pedido no kata) acrescenta mais ramos a ele, o que faz V(G) crescer a cada evolução.
+
+#### Falta de documentação
+
+- Nenhum Javadoc nas classes de produção (`src/main`); os únicos comentários `/**` estão em arquivos de teste.
+- Não existe documento de arquitetura nem de regras de negócio; as regras das ofertas só podem ser descobertas lendo `handleOffers`.
+- Nomes em inglês com documentação em português, e nomes pouco expressivos (`x`, `numberOfXs`, `quantityAsInt`, `fixedValueOrQuantity`) (L-06, L-09, L-11, L-24).
+- Os testes de caracterização escritos nesta etapa passam a ser a única documentação executável do comportamento.
+
+#### Manutenibilidade
+
+- **Extensão:** acrescentar um tipo de oferta exige alterar o enum e editar `handleOffers` (viola o princípio aberto/fechado).
+- **Precisão numérica:** valores monetários em `double` (L-03), com erros de arredondamento que obrigam a usar tolerância (`DELTA`) nos testes.
+- **Quantidade:** um único `double` representa unidades e peso, com *cast* para `int` dentro das regras (L-05).
+- **Encapsulamento:** classes anêmicas e coleção mutável exposta (L-13, L-22).
+- **Estrutura:** pacote único e classe de apresentação em `src/test` (L-23).
+- **Rede de segurança:** o legado começou com um único teste efetivo; agora há 37 testes (6 originais e 31 de caracterização) cobrindo os quatro tipos de oferta, o carrinho, a nota e a impressão. Esse conjunto reduz o risco da refatoração (FEATHERS, 2013), embora a cobertura percentual ainda não tenha sido medida.
+
+#### Síntese e priorização
+
+| Prioridade | Débito | Achados | Impacto | Ação planejada (Etapa 3) |
+| ---------- | ------ | ------- | ------- | ------------------------ |
+| Alta | Cadeia condicional e regra de ofertas dentro do carrinho | L-04, L-07, L-19, L-20, L-21 | Complexidade 13, custo de evolução alto | Extrair uma classe por tipo de oferta (Strategy) |
+| Alta | Dinheiro em `double` | L-03, L-05 | Erros de arredondamento | Introduzir tipo `Money` / `BigDecimal` |
+| Média | Classes anêmicas e nomes confusos | L-06, L-09, L-11, L-13, L-14, L-24 | Legibilidade | Unificar records, renomear campos |
+| Média | Encapsulamento e estrutura de pacotes | L-18, L-22, L-23 | Acoplamento | Mover `ReceiptPrinter`, separar pacotes |
+| Baixa | Documentação e limpeza | L-16, L-17, L-25, L-26 | Manutenção | Javadoc, remover arquivos sobrando |
 
 ## Etapa 3: Refatoração Prática e Evolução Aplicada (Obrigatória) (Peso: 3,0 pontos)
 
