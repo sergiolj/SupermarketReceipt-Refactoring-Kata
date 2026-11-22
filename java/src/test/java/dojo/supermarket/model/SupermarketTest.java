@@ -215,7 +215,8 @@ class SupermarketTest {
         assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.99, 9.95, 5);
     }
     
-    void treeForTowDiscountForTwoItems() {
+    @Test
+    void threeForTowDiscountNotAppliedForTwoItems() {
         SupermarketCatalog catalog = new FakeCatalog();
         Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
         
@@ -231,8 +232,7 @@ class SupermarketTest {
         assertEquals(1.98, receipt.getTotalPrice(), DELTA);
         assertEquals(1,receipt.getItems().size());
         
-        Discount threeForTwo = receipt.getDiscounts().get(0);
-        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
+        assertTrue(receipt.getDiscounts().isEmpty());
 
         ReceiptItem receiptItem = receipt.getItems().get(0);
         assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 1.98, 2);
