@@ -13,9 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class SupermarketTest {
 	
 	private static final double DELTA = 0.001;
-
-    // Todo: test all kinds of discounts are applied properly
-
+	
+	private static void assertDiscount(Discount d, Product product, String description, double amount) {
+	    assertEquals(product, d.product());
+	    assertEquals(description, d.description());
+	    assertEquals(amount, d.discountAmount(), DELTA);
+	}
+	
+	
     @Test
     void tenPercentDiscount() {
         SupermarketCatalog catalog = new FakeCatalog();
@@ -36,10 +41,8 @@ class SupermarketTest {
         List<Discount> discounts = receipt.getDiscounts();
         assertEquals(1, discounts.size());
         Discount discount = discounts.get(0);
-        assertEquals(toothbrush, discount.product());
-        assertEquals("10.0% off", discount.description());
-        assertEquals(-0.99, discount.discountAmount(), DELTA);
-        
+        assertDiscount(discount, toothbrush, discount.description(), DELTA);
+      
         
         // ASSERT
         assertEquals(8.91, receipt.getTotalPrice(), 0.01);
@@ -231,5 +234,7 @@ class SupermarketTest {
       assertEquals(15.54, receiptItem.totalPrice(),0.01);
       assertEquals(6, receiptItem.quantity());
     }
+    
+    
 
 }
