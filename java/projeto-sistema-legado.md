@@ -51,8 +51,9 @@ O sistema não possui interface nem ponto de entrada (`main`); suas funcionalida
 | F-09 | Fechamento da compra (checkout) | Gera a nota fiscal: uma linha por item adicionado, com preço unitário e total, e aplica as ofertas sobre as quantidades acumuladas. | `Teller.checksOutArticlesFrom`                |
 | F-10 | Nota fiscal                     | Armazena itens e descontos e calcula o total (soma dos itens + descontos, que são valores negativos).                             | `Receipt`, `ReceiptItem`, `Discount`          |
 | F-11 | Impressão da nota               | Gera o texto da nota em colunas: itens, linha de quantidade, descontos e total (quantidade inteira para `EACH`, 3 casas para `KILO`). | `ReceiptPrinter` (em `src/test`)              |
+| F-12 | Oferta de pacote (*bundle*) | **Nova (Etapa 3).** Ao levar uma unidade de cada produto do conjunto, desconto percentual sobre o total do conjunto; só pacotes completos contam e soma-se às ofertas por produto. | `BundleOffer`, `SpecialOffers`, `Teller.addBundleOffer` |
 
-**Fora do escopo atual (não implementado):** ofertas de pacote (*bundles* — 10% ao comprar todos os itens de um conjunto), descrita no README do kata como nova funcionalidade a ser desenvolvida; persistência, interface de usuário e catálogo real.
+**Fora do escopo atual (não implementado):** persistência, interface de usuário e catálogo real.
 
 **Regras de negócio observadas (confirmadas por testes de caracterização):** descontos são registrados como valores negativos; as ofertas consideram a soma das quantidades do mesmo produto no carrinho, mesmo adicionado em linhas separadas; produtos sem oferta ou abaixo do mínimo da oferta pagam o preço cheio.
 
