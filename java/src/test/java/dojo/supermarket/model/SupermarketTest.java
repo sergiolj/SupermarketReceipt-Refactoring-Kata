@@ -4,18 +4,31 @@ import dojo.supermarket.ReceiptPrinter;
 import org.approvaltests.Approvals;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.Collections;
+
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SupermarketTest {
 	
 	private static final double DELTA = 0.001;
-
-    // Todo: test all kinds of discounts are applied properly
-
+	
+	private static void assertDiscount(Discount d, Product product, String description, double totalDiscountForProducts) {
+	    assertEquals(product, d.product());
+	    assertEquals(description, d.description());
+	    assertEquals(totalDiscountForProducts, d.discountAmount(), DELTA);
+	}
+	
+	private static void assertReceiptItemDescriptionAndPrice(ReceiptItem receiptItem, Product product, 
+			double itemPrice, double totalWithoutDiscount, int itemQuantity) {
+        assertEquals(product, receiptItem.product());
+        assertEquals(itemPrice, receiptItem.price());
+        assertEquals(totalWithoutDiscount, receiptItem.totalPrice(), DELTA);
+        assertEquals(itemQuantity, receiptItem.quantity());
+	}
+	
+	
     @Test
     void tenPercentDiscount() {
         SupermarketCatalog catalog = new FakeCatalog();
@@ -28,208 +41,272 @@ class SupermarketTest {
         ShoppingCart cart = new ShoppingCart();
         cart.addItemQuantity(toothbrush, 10);
         
-        
-        // ACT
         Receipt receipt = teller.checksOutArticlesFrom(cart);
-        
-        
-        List<Discount> discounts = receipt.getDiscounts();
-        assertEquals(1, discounts.size());
-        Discount discount = discounts.get(0);
-        assertEquals(toothbrush, discount.product());
-        assertEquals("10.0% off", discount.description());
-        assertEquals(-0.99, discount.discountAmount(), DELTA);
-        
-        
-        // ASSERT
-        assertEquals(8.91, receipt.getTotalPrice(), 0.01);
+        assertEquals(8.91, receipt.getTotalPrice(), DELTA);
         assertEquals(1, receipt.getItems().size());
+        
+        Discount tenPercent = receipt.getDiscounts().get(0);
+        assertDiscount(tenPercent, toothbrush, "10.0% off", -0.99);
+        
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertEquals(toothbrush, receiptItem.product());
-        assertEquals(0.99, receiptItem.price());
-        assertEquals(10*0.99, receiptItem.totalPrice());
-        assertEquals(10, receiptItem.quantity());
-
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 9.90, 10);
     }
 
     @Test
-    void threeForTwoDiscount() {
+    void threeForTwoDiscountExactNumberOfOfferItens() {
         SupermarketCatalog catalog = new FakeCatalog();
         Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
-        double unitPrice = 0.99;
         
-        catalog.addProduct(toothbrush, unitPrice);
+        catalog.addProduct(toothbrush, 0.99);
     	
         Teller teller = new Teller(catalog);
-        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, unitPrice);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
 
         ShoppingCart cart = new ShoppingCart();
         cart.addItemQuantity(toothbrush, 3);
-        
-        double legacyDiscountValue = (2 * 0.99) - (3 * 0.99);
-        
-        Discount threeForTwo =new Discount(toothbrush, "3 for 2",legacyDiscountValue);
-        List<Discount> discountsList = new ArrayList<>();
-        discountsList.add(threeForTwo);
  
-        // ACT
         Receipt receipt = teller.checksOutArticlesFrom(cart);
-
-        // ASSERT
-        assertEquals(1.98, receipt.getTotalPrice(), 0.01);
-        assertEquals(discountsList, receipt.getDiscounts());
-        assertEquals(1, receipt.getItems().size());
+        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
         
+        Discount threeForTwo = receipt.getDiscounts().get(0);
+        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
+
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertEquals(toothbrush, receiptItem.product());
-        assertEquals(0.99, receiptItem.price());
-        assertEquals(2.96, receiptItem.totalPrice(),0.01);
-        assertEquals(3, receiptItem.quantity());
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 2.97, 3);
+    }
+    
+    @Test
+    void threeForTowDiscountNotAppliedForTwoItems() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        
+        catalog.addProduct(toothbrush, 0.99);
+    	
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(toothbrush, 2);
+ 
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
+        
+        assertTrue(receipt.getDiscounts().isEmpty());
+
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 1.98, 2);
+    }
+    
+    @Test
+    void threeForTowOneItemExcedesOffer() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        
+        catalog.addProduct(toothbrush, 0.99);
+    	
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(toothbrush, 4);
+ 
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(2.97, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
+        
+        Discount threeForTwo = receipt.getDiscounts().get(0);
+        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
+
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 3.96, 4);
     }
     
     @Test
     void twoForAmountExactNumberOfOfferItens() {
     	  SupermarketCatalog catalog = new FakeCatalog();
           Product soup = new Product("soup", ProductUnit.EACH);
-          double unitPrice = 1.20;
-          double offerArgument = 2.00;
-          int qtd = 2;
-          double totalDiscount = offerArgument * (qtd / 2) + qtd % 2 * unitPrice;
-          double discountAmount = unitPrice * qtd - totalDiscount;
           
-          catalog.addProduct(soup, unitPrice);
+          catalog.addProduct(soup, 1.35);
           
           Teller teller = new Teller(catalog);
-          teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, soup, offerArgument);
+          teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, soup, 2.50);
           
           ShoppingCart cart = new ShoppingCart();
-          cart.addItemQuantity(soup, qtd);
+          cart.addItemQuantity(soup, 2);
           
-          Discount twoForAmount =new Discount(soup, "2 for " + offerArgument, -discountAmount);
-          List<Discount> discountsList = new ArrayList<>();
-          discountsList.add(twoForAmount);
-   
           Receipt receipt = teller.checksOutArticlesFrom(cart);
-
-          // ASSERT
-          assertEquals(2.00, receipt.getTotalPrice(), 0.01);
-          assertEquals(discountsList, receipt.getDiscounts());
+          assertEquals(2.50, receipt.getTotalPrice(), DELTA);
           assertEquals(1, receipt.getItems().size());
+         
+          Discount twoForAmount = receipt.getDiscounts().get(0);
+          assertDiscount(twoForAmount, soup, "2 for 2.5", -0.20);
           
           ReceiptItem receiptItem = receipt.getItems().get(0);
-          assertEquals(soup, receiptItem.product());
-          assertEquals(1.20, receiptItem.price());
-          assertEquals(2.40, receiptItem.totalPrice(),0.01);
-          assertEquals(2, receiptItem.quantity());
+          assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.35, 2.70, 2);
     }
     
     @Test
     void twoForAmountOneItemExcedesOffer() {
     	  SupermarketCatalog catalog = new FakeCatalog();
           Product soup = new Product("soup", ProductUnit.EACH);
-          double unitPrice = 1.20;
-          double offerArgument = 2.00;
-          int qtd = 3;
-          double totalDiscount = offerArgument * (qtd / 2) + qtd % 2 * unitPrice;
-          double discountAmount = unitPrice * qtd - totalDiscount;
           
-          catalog.addProduct(soup, unitPrice);
+          catalog.addProduct(soup, 1.35);
           
           Teller teller = new Teller(catalog);
-          teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, soup, offerArgument);
+          teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, soup, 2.50);
           
           ShoppingCart cart = new ShoppingCart();
-          cart.addItemQuantity(soup, qtd);
-          
-          Discount twoForAmount =new Discount(soup, "2 for " + offerArgument, -discountAmount);
-          List<Discount> discountsList = new ArrayList<>();
-          discountsList.add(twoForAmount);
+          cart.addItemQuantity(soup, 3);
    
           Receipt receipt = teller.checksOutArticlesFrom(cart);
-
-          // ASSERT
-          assertEquals(3.20, receipt.getTotalPrice(), 0.01);
-          assertEquals(discountsList, receipt.getDiscounts());
+          assertEquals(3.85, receipt.getTotalPrice(), DELTA);
           assertEquals(1, receipt.getItems().size());
           
+          Discount twoForAmount = receipt.getDiscounts().get(0);
+          assertDiscount(twoForAmount, soup, "2 for 2.5", -0.20);
+          
           ReceiptItem receiptItem = receipt.getItems().get(0);
-          assertEquals(soup, receiptItem.product());
-          assertEquals(1.20, receiptItem.price());
-          assertEquals(3.60, receiptItem.totalPrice(),0.01);
-          assertEquals(3, receiptItem.quantity());
+          assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.35, 4.05, 3);
+    }
+    
+    @Test
+    void twoForAmountDiscountNotAppliedForOneItem() {
+      	  SupermarketCatalog catalog = new FakeCatalog();
+          Product soup = new Product("soup", ProductUnit.EACH);
+          
+          catalog.addProduct(soup, 1.35);
+          
+          Teller teller = new Teller(catalog);
+          teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, soup, 2.50);
+          
+          ShoppingCart cart = new ShoppingCart();
+          cart.addItemQuantity(soup, 1);
+          
+          Receipt receipt = teller.checksOutArticlesFrom(cart);
+          assertEquals(1.35, receipt.getTotalPrice(), DELTA);
+          assertEquals(1, receipt.getItems().size());
+         
+          assertTrue(receipt.getDiscounts().isEmpty());
+          
+          ReceiptItem receiptItem = receipt.getItems().get(0);
+          assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.35, 1.35, 1);
     }
     
     @Test
     void fiveForAmountExactNumberOfOfferItens() {
   	  SupermarketCatalog catalog = new FakeCatalog();
       Product deodorant = new Product("deodorant", ProductUnit.EACH);
-      double unitPrice = 2.59;
-      double offerArgument = 10.00;
-      int qtd = 5;
-      double discountAmount = unitPrice * qtd - (offerArgument* 1 + qtd % 5 * unitPrice);
-
       
-      catalog.addProduct(deodorant, unitPrice);
+      catalog.addProduct(deodorant, 2.59);
       
       Teller teller = new Teller(catalog);
-      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, offerArgument);
+      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, 10.00);
       
       ShoppingCart cart = new ShoppingCart();
-      cart.addItemQuantity(deodorant, qtd);
+      cart.addItemQuantity(deodorant, 5);
       
-      Discount twoForAmount =new Discount(deodorant, qtd + " for " + offerArgument, -discountAmount);
-      List<Discount> discountsList = new ArrayList<>();
-      discountsList.add(twoForAmount);
-
       Receipt receipt = teller.checksOutArticlesFrom(cart);
-
-      // ASSERT
-      assertEquals(10.00, receipt.getTotalPrice(), 0.01);
-      assertEquals(discountsList, receipt.getDiscounts());
+      assertEquals(10.00, receipt.getTotalPrice(), DELTA);
       assertEquals(1, receipt.getItems().size());
-      
+
+      Discount fiveForAmount = receipt.getDiscounts().get(0);
+      assertDiscount(fiveForAmount, deodorant, "5 for 10.0", -2.95);
+
       ReceiptItem receiptItem = receipt.getItems().get(0);
-      assertEquals(deodorant, receiptItem.product());
-      assertEquals(2.59, receiptItem.price());
-      assertEquals(12.95, receiptItem.totalPrice(),0.01);
-      assertEquals(5, receiptItem.quantity());
+      assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 12.95, 5);
+
     }
     
     @Test
     void fiveForAmountOneItemExcedesOffer() {
   	  SupermarketCatalog catalog = new FakeCatalog();
       Product deodorant = new Product("deodorant", ProductUnit.EACH);
-      double unitPrice = 2.59;
-      double offerArgument = 10.00;
-      int qtd = 6;
-      int offerQtd =5;
-      double discountAmount = unitPrice * qtd - (offerArgument* 1 + qtd % 5 * unitPrice);
-
       
-      catalog.addProduct(deodorant, unitPrice);
+      catalog.addProduct(deodorant, 2.59);
       
       Teller teller = new Teller(catalog);
-      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, offerArgument);
+      teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, 10.00);
       
       ShoppingCart cart = new ShoppingCart();
-      cart.addItemQuantity(deodorant, qtd);
+      cart.addItemQuantity(deodorant, 6);
       
-      Discount fiveForAmount =new Discount(deodorant, offerQtd + " for " + offerArgument, -discountAmount);
-      List<Discount> discountsList = new ArrayList<>();
-      discountsList.add(fiveForAmount);
-
       Receipt receipt = teller.checksOutArticlesFrom(cart);
-
-      // ASSERT
-      assertEquals(12.59, receipt.getTotalPrice(), 0.01);
-      assertEquals(discountsList, receipt.getDiscounts());
+      assertEquals(12.59, receipt.getTotalPrice(), DELTA);
       assertEquals(1, receipt.getItems().size());
       
+      Discount fiveForAmount = receipt.getDiscounts().get(0);
+      assertDiscount(fiveForAmount, deodorant, "5 for 10.0", -2.95);
+
       ReceiptItem receiptItem = receipt.getItems().get(0);
-      assertEquals(deodorant, receiptItem.product());
-      assertEquals(2.59, receiptItem.price());
-      assertEquals(15.54, receiptItem.totalPrice(),0.01);
-      assertEquals(6, receiptItem.quantity());
+      assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 15.54, 6);
     }
+ 
+        @Test
+    void fiveForAmountDiscountNotAplliedForFourItems() {
+    	  SupermarketCatalog catalog = new FakeCatalog();
+          Product deodorant = new Product("deodorant", ProductUnit.EACH);
+          
+          catalog.addProduct(deodorant, 2.59);
+          
+          Teller teller = new Teller(catalog);
+          teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, deodorant, 10.00);
+          
+          ShoppingCart cart = new ShoppingCart();
+          cart.addItemQuantity(deodorant, 4);
+          
+          Receipt receipt = teller.checksOutArticlesFrom(cart);
+          assertEquals(10.36, receipt.getTotalPrice(), DELTA);
+          assertEquals(1, receipt.getItems().size());
+          
+          assertTrue(receipt.getDiscounts().isEmpty());
+         
+          ReceiptItem receiptItem = receipt.getItems().get(0);
+          assertReceiptItemDescriptionAndPrice(receiptItem, deodorant, 2.59, 10.36, 4);
+    }
+    
+    @Test
+    void emptyCart() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        catalog.addProduct(toothbrush, 0.99);
+        
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, toothbrush, 10.0);
+        
+        ShoppingCart cart = new ShoppingCart();
+        
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(0, receipt.getTotalPrice(), DELTA);
+        assertTrue(receipt.getItems().isEmpty());
+        assertTrue(receipt.getDiscounts().isEmpty());  
+    }
+    
+    @Test
+    void offerForProductNotInCart() {
+        SupermarketCatalog catalog = new FakeCatalog();
+        Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
+        catalog.addProduct(toothbrush, 0.99);
+
+        Product soup = new Product("soup", ProductUnit.EACH);
+        catalog.addProduct(soup, 1.99);
+        
+        Teller teller = new Teller(catalog);
+        teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, toothbrush, 10.0);
+
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(soup, 5);
+        
+        Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(9.95, receipt.getTotalPrice(), DELTA);
+        assertEquals(1, receipt.getItems().size());
+        
+        assertTrue(receipt.getDiscounts().isEmpty());
+        
+        ReceiptItem receiptItem = receipt.getItems().get(0);
+        assertReceiptItemDescriptionAndPrice(receiptItem, soup, 1.99, 9.95, 5);
+    }
+    
 
 }
