@@ -170,6 +170,29 @@ No algoritmo observado não existe um main e os testes concentram o que se pode 
 | L-17   | `ReceiptItem`                                   | importe desnecessário                                                                                                                                                                        | Long Parameter List       | Verificar                                                           |
 | L-18   | `Teller.addSpecialOffer` (linhas 16-17)         | A caixa tem que receber a informação de que existe uma oferta de um produto, mas isso não deveria ser parte do catálogo, porque assim cada caixa tem que receber todas as ofertas uma a uma. | Large Class               | Extract Class                                                       |
 
+**Atualização dos achados (código da `main` no commit `9aa8f7e`, após os testes de caracterização):**
+
+| ID   | Situação | Observação |
+| ---- | -------- | ---------- |
+| L-01 | Resolvido | O campo `argument` foi renomeado para `fixedValueOrQuantity` em `Offer`. |
+| L-07 | Reclassificado | Os testes de caracterização provam que `THREE_FOR_TWO` e `FIVE_FOR_AMOUNT` **estão implementadas** e funcionam (3 por 2 com 4 e 6 itens; 5 por valor com 5, 6 e 10 itens). O problema real é de legibilidade: o cálculo está espalhado em blocos `if` separados que testam o mesmo tipo de oferta mais de uma vez. |
+| L-13 | Pendente | `Product` e `ProductQuantity` continuam como dois records na `main`. |
+| L-16 | Pendente | `Receipt.addProduct` ainda recebe quatro parâmetros em vez de um `ReceiptItem`. |
+| L-17 | Pendente | `ReceiptItem` ainda importa `java.util.Objects` sem usar. |
+
+**Novos achados da revisão com testes de caracterização:**
+
+| ID   | Local | Achado | Categoria | Refatoração sugerida |
+| ---- | ----- | ------ | --------- | -------------------- |
+| L-19 | `ShoppingCart.handleOffers` | O bloco de `FIVE_FOR_AMOUNT` começa com `} if (` logo após o `else if` anterior, sem `else`: a estrutura sugere uma cadeia exclusiva, mas os blocos seguintes são `if` independentes. | Defeito Potencial / Legibilidade | Decompose Conditional, Replace Conditional with Polymorphism |
+| L-20 | `ShoppingCart.handleOffers` | O método lê dados de `Offer`, consulta o preço no catálogo e altera `Receipt` (`addDiscount`): usa mais dados de outras classes do que da própria. | Feature Envy | Move Method |
+| L-21 | `handleOffers` (`x`, `% 2`, `% 3`, `% 5`) | Os números 2, 3 e 5 aparecem repetidos, ora na variável `x`, ora fixos nas contas de resto, e podem ficar fora de sincronia. | Números Mágicos / Duplicação | Replace Magic Literal, Extract Variable |
+| L-22 | `Receipt.getDiscounts()` | Devolve a lista interna mutável, ao contrário de `getItems()`, que devolve uma visão imutável. | Encapsulamento fraco | Encapsulate Collection |
+| L-23 | `ReceiptPrinter` | A classe de apresentação da nota está em `src/test`, fora do código de produção. | Estrutura do projeto | Move Class |
+| L-24 | `THREE_FOR_TWO` / `Offer.fixedValueOrQuantity` | O valor da oferta é ignorado no 3 por 2, mas é obrigatório informar algum (o teste original passa o preço unitário). A API é ambígua. | Nome Misterioso / API enganosa | Introduce Parameter Object, Replace Parameter with Explicit Methods |
+| L-25 | `SupermarketCatalog.getUnitPrice` | O contrato não define o que acontece com produto inexistente (o `FakeCatalog` lança `NullPointerException` por unboxing de `null`). | Tratamento de erro ausente | Introduce Special Case, lançar exceção de domínio |
+| L-26 | `java/bin/pom.xml` | Arquivo gerado duplicado versionado no repositório. | Lixo no repositório | Remove Dead Code |
+
 #### 3.2 Recuperação de arquitetura por modelos
 
 Foi utilizado o recurso de exibição de diagramas de classes no Intellij para representar todas as classes, seus atributos e métodos.
