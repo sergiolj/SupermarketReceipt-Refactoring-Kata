@@ -20,16 +20,18 @@ class SupermarketTest {
 	    assertEquals(amount, d.discountAmount(), DELTA);
 	}
 	
-	private static void assertReceiptItemDescriptionAndPrice(ReceiptItem receiptItem, Product product) {
+	private static void assertReceiptItemDescriptionAndPrice(ReceiptItem receiptItem, Product product, 
+			double itemPrice, double totalWithoutDiscount, int itemQuantity) {
         assertEquals(product, receiptItem.product());
-        assertEquals(0.99, receiptItem.price());
-        assertEquals(10*0.99, receiptItem.totalPrice());
-        assertEquals(10, receiptItem.quantity());
+        assertEquals(itemPrice, receiptItem.price());
+        assertEquals(totalWithoutDiscount, receiptItem.totalPrice(), DELTA);
+        assertEquals(itemQuantity, receiptItem.quantity());
 	}
 	
 	
     @Test
     void tenPercentDiscount() {
+    	//CRIA O PRODUTO/OFERTA/ADICIONA AO CARRINHO
         SupermarketCatalog catalog = new FakeCatalog();
         Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
         catalog.addProduct(toothbrush, 0.99);
@@ -40,55 +42,49 @@ class SupermarketTest {
         ShoppingCart cart = new ShoppingCart();
         cart.addItemQuantity(toothbrush, 10);
         
-        
-        // ACT
+        //INICIA O PROCESSO DE VENDA
         Receipt receipt = teller.checksOutArticlesFrom(cart);
-        assertEquals(8.91, receipt.getTotalPrice(), 0.01);
+        assertEquals(8.91, receipt.getTotalPrice(), DELTA);
         assertEquals(1, receipt.getItems().size());
         
-        List<Discount> discounts = receipt.getDiscounts();
-        assertEquals(1, discounts.size());
+        //VERIFICA SE OS DESCONTOS ESTÃO OK
+        List<Discount> discountList = receipt.getDiscounts();
+        assertEquals(1, discountList.size());
+        Discount tenPercent = discountList.get(0);
+        assertDiscount(tenPercent, toothbrush, "10.0% off", -0.99);
         
-        Discount discount = discounts.get(0);
-        assertDiscount(discount, toothbrush, discount.description(), -0.99);
-        
+        //VERIFICA OS VALORES DA NOTA
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush);
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 9.90, 10);
     }
 
     @Test
     void threeForTwoDiscount() {
         SupermarketCatalog catalog = new FakeCatalog();
         Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
-        double unitPrice = 0.99;
         
-        catalog.addProduct(toothbrush, unitPrice);
+        catalog.addProduct(toothbrush, 0.99);
     	
         Teller teller = new Teller(catalog);
-        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, unitPrice);
+        teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
 
         ShoppingCart cart = new ShoppingCart();
         cart.addItemQuantity(toothbrush, 3);
-        
-        double legacyDiscountValue = (2 * 0.99) - (3 * 0.99);
-        
-        Discount threeForTwo =new Discount(toothbrush, "3 for 2",legacyDiscountValue);
-        List<Discount> discountsList = new ArrayList<>();
-        discountsList.add(threeForTwo);
  
-        // ACT
+      //INICIA O PROCESSO DE VENDA
         Receipt receipt = teller.checksOutArticlesFrom(cart);
+        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(1,receipt.getItems().size());
+        
+        List<Discount> discountList = receipt.getDiscounts();
+        assertEquals(1, discountList.size());
+        
+        Discount threeForTwo = discountList.get(0);
+        assertDiscount(threeForTwo, toothbrush, "3 for 2", -0.99);
 
-        // ASSERT
-        assertEquals(1.98, receipt.getTotalPrice(), 0.01);
-        assertEquals(discountsList, receipt.getDiscounts());
-        assertEquals(1, receipt.getItems().size());
         
         ReceiptItem receiptItem = receipt.getItems().get(0);
-        assertEquals(toothbrush, receiptItem.product());
-        assertEquals(0.99, receiptItem.price());
-        assertEquals(2.96, receiptItem.totalPrice(),0.01);
-        assertEquals(3, receiptItem.quantity());
+        assertReceiptItemDescriptionAndPrice(receiptItem, toothbrush, 0.99, 2.97, 3);
     }
     
     @Test
