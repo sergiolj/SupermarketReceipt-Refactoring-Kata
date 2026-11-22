@@ -199,6 +199,27 @@ Foi utilizado o recurso de exibição de diagramas de classes no Intellij para r
 
 ![Diagrama de classes do sistema legado](supermarket.png)
 
+**Análise do diagrama e módulos identificados.** O sistema tem **uma única camada física**: todas as 11 classes de produção (202 linhas) ficam no pacote `dojo.supermarket.model`, mais a classe de impressão (`ReceiptPrinter`, 79 linhas) em `src/test`. Do ponto de vista lógico, é possível identificar cinco componentes:
+
+| Componente | Classes | Papel |
+| ---------- | ------- | ----- |
+| Dados de domínio | `Product`, `ProductUnit`, `ProductQuantity`, `Offer`, `SpecialOfferType`, `Discount`, `ReceiptItem` | Records e enums sem comportamento. |
+| Contrato de catálogo | `SupermarketCatalog` | Única interface do sistema; a implementação de produção não existe. |
+| Orquestração | `Teller` | Guarda as ofertas, usa o catálogo e produz a nota. |
+| Regras de promoção | `ShoppingCart.handleOffers` | Concentra todo o cálculo de descontos dentro do carrinho. |
+| Nota fiscal e apresentação | `Receipt`, `ReceiptPrinter` | Acumula itens e descontos; formata o texto de saída. |
+
+Dependências observadas (seta = "depende de"):
+
+```
+Teller ──► ShoppingCart ──► Receipt ──► ReceiptItem, Discount
+  │             │  └──────► Offer, SpecialOfferType, Discount, ProductQuantity
+  └──► SupermarketCatalog ◄─┘
+ReceiptPrinter ──► Receipt, ReceiptItem, Discount, ProductUnit
+```
+
+A leitura do diagrama mostra que `ShoppingCart` é o ponto de acoplamento do sistema: depende de sete tipos (`Product`, `ProductQuantity`, `Receipt`, `Offer`, `Discount`, `SpecialOfferType` e `SupermarketCatalog`) e é a única classe que decide regras de negócio. O `Teller` também depende de sete tipos, mas apenas repassa dados. As demais classes são folhas que não dependem de ninguém (exceto `Receipt`, `ReceiptItem` e `Discount`, que se referem a `Product`). Não há dependências circulares.
+
 
 
 #### 3.3 Cartões CRC (Class-Responsibility-Collaborator)
