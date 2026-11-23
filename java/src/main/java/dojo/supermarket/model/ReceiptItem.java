@@ -1,6 +1,10 @@
 package dojo.supermarket.model;
 
-import java.util.Objects;
 
 public record ReceiptItem(Product product, double quantity, double price, double totalPrice) {
+	
+	public ReceiptItem(Product product, double quantity, double price) {
+		this(product, quantity, price, quantity * price);
+	}
+	
 }

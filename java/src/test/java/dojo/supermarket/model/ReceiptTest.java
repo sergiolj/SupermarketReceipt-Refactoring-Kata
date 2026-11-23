@@ -16,8 +16,8 @@ class ReceiptTest {
     @Test
     void totalIsSumOfItemsPlusDiscounts() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(rice, 2, 2.49, 4.98);
-        receipt.addProduct(rice, 1, 2.49, 2.49);
+        receipt.addProduct(rice, 2, 2.49);
+        receipt.addProduct(rice, 1, 2.49);
         // descontos são valores negativos
         receipt.addDiscount(new Discount(rice, "10.0% off", -0.747));
         assertEquals(6.723, receipt.getTotalPrice(), 0.0001);
@@ -26,15 +26,15 @@ class ReceiptTest {
     @Test
     void addProductCreatesReceiptItem() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(rice, 2, 2.49, 4.98);
+        receipt.addProduct(rice, 2, 2.49);
         ReceiptItem item = receipt.getItems().get(0);
-        assertEquals(new ReceiptItem(rice, 2, 2.49, 4.98), item);
+        assertEquals(new ReceiptItem(rice, 2, 2.49), item);
     }
 
     @Test
     void itemsListIsUnmodifiable() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(rice, 1, 2.49, 2.49);
+        receipt.addProduct(rice, 1, 2.49);
         assertThrows(UnsupportedOperationException.class, () -> receipt.getItems().clear());
     }
 

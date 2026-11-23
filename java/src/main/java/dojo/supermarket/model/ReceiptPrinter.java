@@ -1,13 +1,18 @@
 package dojo.supermarket.model;
 
+
 import java.util.Locale;
 
 public class ReceiptPrinter {
 
+	private static final String TOTAL_LABEL = "Total: ";
+	private static final String PRICE_FORMAT ="%.2f";
+	private static final String WEIGHT_FORMAT = "%.3f";
+	private static final int DEFAULT_COLUMNS_WIDTH = 40;
     private final int columns;
 
     public ReceiptPrinter() {
-        this(40);
+        this(DEFAULT_COLUMNS_WIDTH);
     }
 
     public ReceiptPrinter(int columns) {
@@ -17,12 +22,10 @@ public class ReceiptPrinter {
     public String printReceipt(Receipt receipt) {
         StringBuilder result = new StringBuilder();
         for (ReceiptItem item : receipt.getItems()) {
-            String receiptItem = presentReceiptItem(item);
-            result.append(receiptItem);
+            result.append(presentReceiptItem(item));
         }
         for (Discount discount : receipt.getDiscounts()) {
-            String discountPresentation = presentDiscount(discount);
-            result.append(discountPresentation);
+            result.append(presentDiscount(discount));
         }
 
         result.append("\n");
@@ -34,28 +37,31 @@ public class ReceiptPrinter {
         String totalPricePresentation = presentPrice(item.totalPrice());
         String name = item.product().name();
 
-        String line = formatLineWithWhitespace(name, totalPricePresentation);
+        StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
 
-        if (item.quantity() != 1) {
-            line += "  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n";
+        if (hasMoreThanOneProduct(item)) {
+        	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
         }
-        return line;
+        return line.toString();
+    }
+    
+    private boolean hasMoreThanOneProduct(ReceiptItem item) {
+    	return item.quantity() > 1;
     }
 
     private String presentDiscount(Discount discount) {
         String name = discount.description() + "(" + discount.product().name() + ")";
         String value = presentPrice(discount.discountAmount());
 
-        return formatLineWithWhitespace(name, value);
+        return formatLineLeftAndRightAlignment(name, value);
     }
 
     private String presentTotal(Receipt receipt) {
-        String name = "Total: ";
         String value = presentPrice(receipt.getTotalPrice());
-        return formatLineWithWhitespace(name, value);
+        return formatLineLeftAndRightAlignment(TOTAL_LABEL, value);
     }
 
-    private String formatLineWithWhitespace(String name, String value) {
+    private String formatLineLeftAndRightAlignment(String name, String value) {
         StringBuilder line = new StringBuilder();
         line.append(name);
         int whitespaceSize = this.columns - name.length() - value.length();
@@ -66,12 +72,12 @@ public class ReceiptPrinter {
     }
 
     private static String presentPrice(double price) {
-        return String.format(Locale.UK, "%.2f", price);
+        return String.format(Locale.UK, PRICE_FORMAT, price);
     }
 
     private static String presentQuantity(ReceiptItem item) {
-        return ProductUnit.EACH.equals(item.product().unit())
-                ? String.format("%d", (int)item.quantity())
-                : String.format(Locale.UK, "%.3f", item.quantity());
-    }
+        return item.product().unit().isDiscrete()
+                ? String.format("%d", (int) item.quantity())
+                : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
+   }
 }
