@@ -13,44 +13,44 @@ class ReceiptPrinterTest {
     @Test   
     void printSingleReceiptItemWithoutDiscountWithColumnArgument() {
     	Receipt receipt = new Receipt();
-    	receipt.addProduct(apples, 2.50, 1.25, 2.50);
+    	receipt.addProduct(apples, 2.50, 1.25);
     	ReceiptPrinter printer = new ReceiptPrinter(20);
     	String outString = printer.printReceipt(receipt);
     	
-    	assertEquals("apples" + " ".repeat(10) + "2.50\n" 
+    	assertEquals("apples" + " ".repeat(10) + "3.13\n" 
     				+ "  " + "1.25" + " * " + "2.500\n"
     				+ "\n"
-    				+ "Total: " + " ".repeat(9) + "2.50\n", outString);
+    				+ "Total: " + " ".repeat(9) + "3.13\n", outString);
     }
     
     @Test   
     void printSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
     	Receipt receipt = new Receipt();
     	//produto / quantidade / precounit / preco total
-    	receipt.addProduct(apples, 2.50, 1.25, 2.50);
+    	receipt.addProduct(apples, 2.50, 1.25);
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
     	
     	//produto / preco total
     	//preco unit * quantidade
     	//preco total
-    	assertEquals("apples" + " ".repeat(30) + "2.50\n" 
+    	assertEquals("apples" + " ".repeat(30) + "3.13\n" 
     				+ "  " + "1.25" + " * " + "2.500\n"
     				+ "\n"
-    				+ "Total: " + " ".repeat(29) + "2.50\n", outString);
+    				+ "Total: " + " ".repeat(29) + "3.13\n", outString);
     }
     
     @Test   
     void printsOneKiloItemHasNoMultiplicationLine() {
     	Receipt receipt = new Receipt();
-    	receipt.addProduct(apples, 1.00, 1.25, 12.50);
+    	receipt.addProduct(apples, 1.00, 1.25);
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
     	
-    	assertEquals("apples" + " ".repeat(29) + "12.50\n" 
+    	assertEquals("apples" + " ".repeat(30) + "1.25\n" 
     	//			+ "  " + "1.25" + " * " + "1.000\n"
     				+ "\n"
-    				+ "Total: " + " ".repeat(28) + "12.50\n", outString);
+    				+ "Total: " + " ".repeat(29) + "1.25\n", outString);
     }
     
     @Test
@@ -62,7 +62,7 @@ class ReceiptPrinterTest {
     @Test
     void printsSingleUnitItemWithoutQuantityLine() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 1, 0.99, 0.99);
+        receipt.addProduct(toothbrush, 1, 0.99);
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("toothbrush      0.99\n\nTotal:          0.99\n", out);
     }
@@ -70,7 +70,7 @@ class ReceiptPrinterTest {
     @Test
     void printsDiscreteQuantityAsInteger() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 3, 0.99, 2.97);
+        receipt.addProduct(toothbrush, 3, 0.99);
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("toothbrush      2.97\n  0.99 * 3\n\nTotal:          2.97\n", out);
     }
@@ -78,7 +78,7 @@ class ReceiptPrinterTest {
     @Test
     void printsWeightedQuantityWithThreeDecimals() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(apples, 2.5, 1.99, 4.975);
+        receipt.addProduct(apples, 2.5, 1.99);
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("apples          4.98\n  1.99 * 2.500\n\nTotal:          4.98\n", out);
     }
@@ -86,7 +86,7 @@ class ReceiptPrinterTest {
     @Test
     void printsDiscountLineAndDiscountedTotal() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 3, 0.99, 2.97);
+        receipt.addProduct(toothbrush, 3, 0.99);
         receipt.addDiscount(new Discount(toothbrush, "3 for 2", -0.99));
         String out = new ReceiptPrinter(30).printReceipt(receipt);
         assertEquals(
@@ -100,7 +100,7 @@ class ReceiptPrinterTest {
     @Test
     void longNamesAreNotTruncatedNorPadded() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(new Product("very-long-product-name", ProductUnit.EACH), 1, 1.0, 1.0);
+        receipt.addProduct(new Product("very-long-product-name", ProductUnit.EACH), 1, 1.0);
         String out = new ReceiptPrinter(10).printReceipt(receipt);
         assertEquals("very-long-product-name1.00\n\nTotal: 1.00\n", out);
     }

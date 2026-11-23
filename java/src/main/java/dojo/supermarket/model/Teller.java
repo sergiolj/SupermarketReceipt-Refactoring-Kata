@@ -43,9 +43,8 @@ public class Teller {
             
             double quantity = productQtd.quantity();
             double unitPrice = catalog.getUnitPrice(currentProduct);
-            double price = quantity * unitPrice;
             
-            receipt.addProduct(currentProduct, quantity, unitPrice, price);
+            receipt.addProduct(currentProduct, quantity, unitPrice);
         }
     }
 }
