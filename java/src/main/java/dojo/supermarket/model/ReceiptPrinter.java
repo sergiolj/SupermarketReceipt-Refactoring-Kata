@@ -1,5 +1,6 @@
 package dojo.supermarket.model;
 
+import java.awt.event.ItemEvent;
 import java.util.Locale;
 
 public class ReceiptPrinter {
@@ -38,10 +39,14 @@ public class ReceiptPrinter {
 
         StringBuilder line = new StringBuilder(formatLineWithWhitespace(name, totalPricePresentation));
 
-        if (item.quantity() != 1) {
+        if (hasMoreThanOneProduct(item)) {
         	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
         }
         return line.toString();
+    }
+    
+    private boolean hasMoreThanOneProduct(ReceiptItem item) {
+    	return item.quantity() > 1;
     }
 
     private String presentDiscount(Discount discount) {
