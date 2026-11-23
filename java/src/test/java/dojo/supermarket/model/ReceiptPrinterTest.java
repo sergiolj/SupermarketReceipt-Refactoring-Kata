@@ -1,6 +1,5 @@
-package dojo.supermarket;
+package dojo.supermarket.model;
 
-import dojo.supermarket.model.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,6 +9,50 @@ class ReceiptPrinterTest {
     private final Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
     private final Product apples = new Product("apples", ProductUnit.KILO);
 
+    
+    @Test   
+    void printSingleReceiptItemWithoutDiscountWithColumnArgument() {
+    	Receipt receipt = new Receipt();
+    	receipt.addProduct(apples, 2.50, 1.25, 2.50);
+    	ReceiptPrinter printer = new ReceiptPrinter(20);
+    	String outString = printer.printReceipt(receipt);
+    	
+    	assertEquals("apples" + " ".repeat(10) + "2.50\n" 
+    				+ "  " + "1.25" + " * " + "2.500\n"
+    				+ "\n"
+    				+ "Total: " + " ".repeat(9) + "2.50\n", outString);
+    }
+    
+    @Test   
+    void printSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
+    	Receipt receipt = new Receipt();
+    	//produto / quantidade / precounit / preco total
+    	receipt.addProduct(apples, 2.50, 1.25, 2.50);
+    	ReceiptPrinter printer = new ReceiptPrinter();
+    	String outString = printer.printReceipt(receipt);
+    	
+    	//produto / preco total
+    	//preco unit * quantidade
+    	//preco total
+    	assertEquals("apples" + " ".repeat(30) + "2.50\n" 
+    				+ "  " + "1.25" + " * " + "2.500\n"
+    				+ "\n"
+    				+ "Total: " + " ".repeat(29) + "2.50\n", outString);
+    }
+    
+    @Test   
+    void printsOneKiloItemHasNoMultiplicationLine() {
+    	Receipt receipt = new Receipt();
+    	receipt.addProduct(apples, 1.00, 1.25, 12.50);
+    	ReceiptPrinter printer = new ReceiptPrinter();
+    	String outString = printer.printReceipt(receipt);
+    	
+    	assertEquals("apples" + " ".repeat(29) + "12.50\n" 
+    	//			+ "  " + "1.25" + " * " + "1.000\n"
+    				+ "\n"
+    				+ "Total: " + " ".repeat(28) + "12.50\n", outString);
+    }
+    
     @Test
     void printsEmptyReceiptWithOnlyTotal() {
         String out = new ReceiptPrinter(20).printReceipt(new Receipt());
