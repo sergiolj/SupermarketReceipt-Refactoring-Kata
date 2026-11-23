@@ -5,6 +5,7 @@ import java.util.Locale;
 
 public class ReceiptPrinter {
 
+	private static final String DISCRETE_UNIT_FORMAT = "%d";
 	private static final String TOTAL_LABEL = "Total: ";
 	private static final String PRICE_FORMAT ="%.2f";
 	private static final String WEIGHT_FORMAT = "%.3f";
@@ -77,7 +78,7 @@ public class ReceiptPrinter {
 
     private static String presentQuantity(ReceiptItem item) {
         return item.product().unit().isDiscrete()
-                ? String.format("%d", (int) item.quantity())
+                ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
                 : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
    }
 }
