@@ -74,7 +74,7 @@ public class ReceiptPrinter implements ReceiptFormatter{
     }
 
     private static String presentQuantity(ReceiptItem item) {
-        return item.product().unit().isDiscrete()
+        return item.isProductDiscrete()
                 ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
                 : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
    }
