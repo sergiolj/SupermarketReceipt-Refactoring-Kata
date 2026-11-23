@@ -1,15 +1,11 @@
 package dojo.supermarket.model;
 
-
-import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class ReceiptPrinter implements ReceiptFormatter{
 
-	private static final String DISCRETE_UNIT_FORMAT = "%d";
-	private static final String TOTAL_LABEL = "Total: ";
-	private static final String PRICE_FORMAT ="%.2f";
-	private static final String WEIGHT_FORMAT = "%.3f";
 	private static final int DEFAULT_COLUMNS_WIDTH = 40;
+	private static final String BLANK_LINE = "\n";
     private final int columns;
 
     public ReceiptPrinter() {
@@ -22,45 +18,49 @@ public class ReceiptPrinter implements ReceiptFormatter{
 
     @Override
     public String printReceipt(Receipt receipt) {
-        StringBuilder result = new StringBuilder();
-        for (ReceiptItem item : receipt.getItems()) {
-            result.append(presentReceiptItem(item));
-        }
-        for (Discount discount : receipt.getDiscounts()) {
-            result.append(presentDiscount(discount));
-        }
+    	return presentItems(receipt)
+    			+ presentDiscounts(receipt)
+    			+ BLANK_LINE
+    			+ presentTotal(receipt);
+    }
 
-        result.append("\n");
-        result.append(presentTotal(receipt));
-        return result.toString();
+    private String presentItems(Receipt receipt) {
+    	return receipt.getItems()
+    			.stream()
+    			.map(this::presentReceiptItem)
+    			.collect(Collectors.joining());
+    }
+    
+    private String presentDiscounts(Receipt receipt) {
+    	return receipt.getDiscounts()
+    			.stream()
+    			.map(this::presentDiscount)
+    			.collect(Collectors.joining());
     }
 
     private String presentReceiptItem(ReceiptItem item) {
-        String totalPricePresentation = presentPrice(item.totalPrice());
+        String totalPricePresentation = ReceiptFormat.price(item.totalPrice());
         String name = item.product().name();
 
         StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
 
-        if (hasQuantityLine(item)) {
-        	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
+        if (!item.hasSingleQuantity()) {
+        	line.append("  " + ReceiptFormat.price(item.price()) + " * " + ReceiptFormat.quantity(item) + "\n");
         }
         return line.toString();
     }
     
-    private boolean hasQuantityLine(ReceiptItem item) {
-    	return item.quantity() != 1;
-    }
-
     private String presentDiscount(Discount discount) {
         String name = discount.description() + "(" + discount.product().name() + ")";
-        String value = presentPrice(discount.discountAmount());
+        String value = ReceiptFormat.price(discount.discountAmount());
 
         return formatLineLeftAndRightAlignment(name, value);
     }
 
     private String presentTotal(Receipt receipt) {
-        String value = presentPrice(receipt.getTotalPrice());
-        return formatLineLeftAndRightAlignment(TOTAL_LABEL, value);
+        String value = ReceiptFormat.price(receipt.getTotalPrice());
+        
+        return formatLineLeftAndRightAlignment(ReceiptFormat.total(), value);
     }
 
     private String formatLineLeftAndRightAlignment(String name, String value) {
@@ -72,14 +72,4 @@ public class ReceiptPrinter implements ReceiptFormatter{
         line.append('\n');
         return line.toString();
     }
-
-    private static String presentPrice(double price) {
-        return String.format(Locale.UK, PRICE_FORMAT, price);
-    }
-
-    private static String presentQuantity(ReceiptItem item) {
-        return item.product().unit().isDiscrete()
-                ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
-                : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
-   }
 }
