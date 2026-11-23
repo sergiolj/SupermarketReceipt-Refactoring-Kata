@@ -40,6 +40,24 @@ class ReceiptPrinterTest {
     				+ "Total: " + " ".repeat(29) + "3.13\n", outString);
     }
     
+    
+    @Test   
+    void printLessThanOneKilo() {
+    	Receipt receipt = new Receipt();
+    	//produto / quantidade / precounit / preco total
+    	receipt.addProduct(apples, 0.50, 1.20);
+    	ReceiptPrinter printer = new ReceiptPrinter();
+    	String outString = printer.printReceipt(receipt);
+    	
+    	//produto / preco total
+    	//preco unit * quantidade
+    	//preco total
+    	assertEquals("apples" + " ".repeat(30) + "0.60\n" 
+    				+ "  " + "1.20" + " * " + "0.500\n"
+    				+ "\n"
+    				+ "Total: " + " ".repeat(29) + "0.60\n", outString);
+    }
+    
     @Test   
     void printsOneKiloItemHasNoMultiplicationLine() {
     	Receipt receipt = new Receipt();
