@@ -1,6 +1,6 @@
 package dojo.supermarket.model;
 
-import java.awt.event.ItemEvent;
+
 import java.util.Locale;
 
 public class ReceiptPrinter {
@@ -8,11 +8,11 @@ public class ReceiptPrinter {
 	private static final String TOTAL_LABEL = "Total: ";
 	private static final String PRICE_FORMAT ="%.2f";
 	private static final String WEIGHT_FORMAT = "%.3f";
-	private static final int DEFAULT_COLUMNS = 40;
+	private static final int DEFAULT_COLUMNS_WIDTH = 40;
     private final int columns;
 
     public ReceiptPrinter() {
-        this(DEFAULT_COLUMNS);
+        this(DEFAULT_COLUMNS_WIDTH);
     }
 
     public ReceiptPrinter(int columns) {
@@ -37,7 +37,7 @@ public class ReceiptPrinter {
         String totalPricePresentation = presentPrice(item.totalPrice());
         String name = item.product().name();
 
-        StringBuilder line = new StringBuilder(formatLineWithWhitespace(name, totalPricePresentation));
+        StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
 
         if (hasMoreThanOneProduct(item)) {
         	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
@@ -53,15 +53,15 @@ public class ReceiptPrinter {
         String name = discount.description() + "(" + discount.product().name() + ")";
         String value = presentPrice(discount.discountAmount());
 
-        return formatLineWithWhitespace(name, value);
+        return formatLineLeftAndRightAlignment(name, value);
     }
 
     private String presentTotal(Receipt receipt) {
         String value = presentPrice(receipt.getTotalPrice());
-        return formatLineWithWhitespace(TOTAL_LABEL, value);
+        return formatLineLeftAndRightAlignment(TOTAL_LABEL, value);
     }
 
-    private String formatLineWithWhitespace(String name, String value) {
+    private String formatLineLeftAndRightAlignment(String name, String value) {
         StringBuilder line = new StringBuilder();
         line.append(name);
         int whitespaceSize = this.columns - name.length() - value.length();
@@ -76,8 +76,8 @@ public class ReceiptPrinter {
     }
 
     private static String presentQuantity(ReceiptItem item) {
-        return ProductUnit.EACH.equals(item.product().unit())
-                ? String.format("%d", (int)item.quantity())
+        return item.product().unit().isDiscrete()
+                ? String.format("%d", (int) item.quantity())
                 : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
-    }
+   }
 }
