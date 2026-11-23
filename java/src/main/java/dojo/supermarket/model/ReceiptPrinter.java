@@ -41,16 +41,12 @@ public class ReceiptPrinter implements ReceiptFormatter{
 
         StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
 
-        if (hasQuantityLine(item)) {
+        if (!item.hasSingleQuantity()) {
         	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
         }
         return line.toString();
     }
     
-    private boolean hasQuantityLine(ReceiptItem item) {
-    	return item.quantity() != 1;
-    }
-
     private String presentDiscount(Discount discount) {
         String name = discount.description() + "(" + discount.product().name() + ")";
         String value = presentPrice(discount.discountAmount());

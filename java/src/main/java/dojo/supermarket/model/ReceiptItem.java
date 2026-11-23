@@ -7,4 +7,7 @@ public record ReceiptItem(Product product, double quantity, double price) {
 		return this.price * quantity;
 	}
 	
+	public boolean hasSingleQuantity() {
+		return quantity == 1;
+	}
 }
