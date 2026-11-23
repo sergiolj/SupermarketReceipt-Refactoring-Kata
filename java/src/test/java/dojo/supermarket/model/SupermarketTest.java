@@ -1,10 +1,7 @@
 package dojo.supermarket.model;
 
-import org.approvaltests.Approvals;
 import org.junit.jupiter.api.Test;
 
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

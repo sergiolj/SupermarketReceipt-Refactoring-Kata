@@ -1,6 +1,6 @@
 package dojo.supermarket.model;
 
-public interface ReceiptFormatter {
+public interface ReceiptPrinterFormatter {
 	
 	String printReceipt(Receipt receipt);
 

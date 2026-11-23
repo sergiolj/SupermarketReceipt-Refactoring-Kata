@@ -13,17 +13,17 @@ public class ReceiptFormat {
 		
 	}
 	
-	static String price(double value) {
+	public static String price(double value) {
 		return String.format(Locale.UK, PRICE_FORMAT, value);
 	}
 	
-	static String quantity(ReceiptItem item) {
+	public static String quantity(ReceiptItem item) {
 		return item.isProductDiscrete()
         ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
         : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
 	}
 	
-	static String total() {
+	public static String total() {
 		return TOTAL_LABEL;
 	}
 }
