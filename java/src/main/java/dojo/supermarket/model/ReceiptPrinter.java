@@ -3,7 +3,7 @@ package dojo.supermarket.model;
 
 import java.util.Locale;
 
-public class ReceiptPrinter {
+public class ReceiptPrinter implements ReceiptFormatter{
 
 	private static final String DISCRETE_UNIT_FORMAT = "%d";
 	private static final String TOTAL_LABEL = "Total: ";
@@ -20,6 +20,7 @@ public class ReceiptPrinter {
         this.columns = columns;
     }
 
+    @Override
     public String printReceipt(Receipt receipt) {
         StringBuilder result = new StringBuilder();
         for (ReceiptItem item : receipt.getItems()) {
