@@ -1,0 +1,228 @@
+\input{preambulo}
+\renewcommand{\capa}[2]{%
+\begin{titlepage}\centering\singlespacing
+\includegraphics[width=4.5cm]{../../java/img/logo.png}\\[1.2cm]
+{\large UNIVERSIDADE CAT\'OLICA DO SALVADOR\\ Evolu\c{c}\~ao e Moderniza\c{c}\~ao de Sistemas Legados -- 2026.2}\\[3cm]
+{\Large\bfseries #1}\\[0.8cm]
+{\large #2}\\[1.2cm]
+{\large Projeto: SupermarketReceipt Refactoring Kata (Java)\\ Grupo 3: \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter}}\\[3cm]
+{\large S\'ergio Lopes J\'unior\\ Matr\'icula 200026817}\vfill
+{\large Salvador\\ Novembro de 2026}
+\end{titlepage}}
+\begin{document}
+\capa{Plano de Modulariza\c{c}\~ao e Melhorias de Legibilidade e Complexidade}{Etapa 3 -- Refatora\c{c}\~ao Pr\'atica e Evolu\c{c}\~ao Aplicada}
+\tableofcontents\newpage
+
+\section{Introdu\c{c}\~ao e escopo}
+Este plano descreve a modulariza\c{c}\~ao das classes de nota fiscal e de impress\~ao, atribu\'idas ao Grupo 3 na divis\~ao do trabalho da Etapa 3: \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter} e o cat\'alogo usado nos testes (\code{SupermarketCatalog} e \code{FakeCatalog}). O objetivo \'e separar responsabilidades que estavam misturadas na impress\~ao da nota, proteger o estado da nota fiscal e tornar o c\'odigo mais leg\'ivel, sem alterar o comportamento, seguindo o cat\'alogo de refatora\c{c}\~oes de Fowler \cite{fowler2020} e as recomenda\c{c}\~oes de Martin \cite{martin2011}.
+
+Antes de qualquer altera\c{c}\~ao, o comportamento atual foi registrado com testes de caracteriza\c{c}\~ao, inclusive os defeitos do legado \cite{feathers2013}. Este documento foi \textbf{atualizado ap\'os a execu\c{c}\~ao} do Grupo 3: os trechos de c\'odigo da se\c{c}\~ao 4 correspondem ao que foi implementado, e a se\c{c}\~ao 8 registra o que diverge do plano e os resultados medidos.
+
+\section{Ponto de partida}
+O diagn\'ostico da Etapa 2 e a revis\~ao feita com os testes de caracteriza\c{c}\~ao registraram os seguintes dados sobre a nota fiscal e a impress\~ao:
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{6.2cm}Y}
+\toprule \textbf{Indicador atual} & \textbf{Valor e achados relacionados} \\ \midrule
+Local do \code{ReceiptPrinter} & \code{src/test/java/dojo/supermarket}: c\'odigo de produ\c{c}\~ao fora de \code{src/main} e fora da medi\c{c}\~ao de cobertura (L-23). \\
+Testes diretos das classes do grupo & 0. O comportamento s\'o era exercitado indiretamente pelo \'unico teste do kata. \\
+\code{Receipt.addProduct} & 4 par\^ametros; o total do item \'e calculado e informado pelo chamador (L-16). \\
+\code{ReceiptItem} & Guarda \code{totalPrice}, dado sempre deriv\'avel de \code{quantity * price}; \textit{import} sem uso (L-17). \\
+\code{Receipt.getDiscounts()} & Devolve a lista interna mut\'avel, ao contr\'ario de \code{getItems()} (L-22). \\
+Responsabilidades do \code{ReceiptPrinter} & Tr\^es em uma classe: montar a nota, alinhar colunas e formatar n\'umeros. \\
+Literais no \code{ReceiptPrinter} & \texttt{40}, \texttt{"\%.2f"}, \texttt{"\%.3f"}, \texttt{"\%d"}, \texttt{"Total: "} e \texttt{"\textbackslash n"} sem nome. \\
+Navega\c{c}\~ao entre objetos & \code{item.product().unit()} para decidir o formato da quantidade (Lei de Dem\'eter). \\
+\code{FakeCatalog.getUnitPrice} & Produto fora do cat\'alogo gera \code{NullPointerException} (L-25). \\
+Dinheiro e quantidade & \code{double}, com arredondamento feito linha a linha na impress\~ao (L-03). \\
+\bottomrule\end{tabularx}
+\caption{Indicadores de partida da nota fiscal e da impress\~ao.}\end{table}
+
+\section{Arquitetura-alvo}
+\subsection{Componentes e pacotes propostos}
+A proposta separa os \textbf{dados} da nota fiscal da sua \textbf{apresenta\c{c}\~ao}, com depend\^encia em um \'unico sentido: a apresenta\c{c}\~ao usa o modelo, e o modelo n\~ao conhece os formatos de sa\'ida. A coluna ``Grupo'' mostra quem \'e respons\'avel por cada pacote.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}p{5.6cm}>{\centering\arraybackslash}p{1.2cm}Y}
+\toprule \textbf{Pacote} & \textbf{Classes} & \textbf{Grupo} & \textbf{Responsabilidade} \\ \midrule
+\code{...model} & \code{Product}, \code{ProductUnit}, \code{ShoppingCart}, \code{Teller}, ofertas, \code{Discount}, \code{SupermarketCatalog} & 1, 2 e 3 & Dom\'inio da compra. \code{Discount} permanece aqui (ver decis\~ao abaixo). \\
+\code{...model.receipt} & \code{Receipt}, \code{ReceiptItem} & 3 & Dados da nota fiscal e regras do total. \\
+\code{...printing} & \code{ReceiptPrinterFormatter}, \code{ReceiptPrinter}, \code{ReceiptPrinterHtml}, \code{ReceiptFormat} & 3 & Apresenta\c{c}\~ao da nota em texto, em HTML e formata\c{c}\~ao de n\'umeros. \\
+\bottomrule\end{tabularx}
+\caption{Pacotes-alvo (\code{...} = \code{dojo.supermarket}); a divis\~ao em pacotes ainda n\~ao foi feita.}\end{table}
+
+\subsection{Responsabilidades}
+\begin{itemize}
+\item \code{Receipt}: guarda itens e descontos e calcula o total; as duas listas s\~ao expostas somente como vis\~oes imut\'aveis.
+\item \code{ReceiptItem}: produto, quantidade e pre\c{c}o; calcula \code{totalPrice()} e responde perguntas sobre si mesmo, como \code{hasSingleQuantity()} e \code{isProductDiscrete()}.
+\item \code{ReceiptFormat}: formata\c{c}\~ao de pre\c{c}o (duas casas) e de quantidade (inteira para unidade, tr\^es casas para peso), compartilhada por todos os formatos de sa\'ida.
+\item \code{ReceiptPrinterFormatter}: interface com um \'unico m\'etodo, \code{printReceipt(Receipt)}, que define o contrato de qualquer formato de sa\'ida (padr\~ao \textit{Strategy} \cite{gamma2000}).
+\item \code{ReceiptPrinter}: implementa\c{c}\~ao em texto com colunas de largura fixa.
+\item \code{ReceiptPrinterHtml}: implementa\c{c}\~ao em HTML, prevista pela interface.
+\end{itemize}
+\textbf{Decis\~ao tomada:} \code{Discount} \'e uma linha da nota, mas \'e criado pelas ofertas e aparece em seis classes de produ\c{c}\~ao do Grupo 1 e em nove arquivos de teste. Mov\^e-lo para \code{model.receipt} afetaria o trabalho de todos os grupos; por isso ele permanece em \code{model}.
+
+\section{Antes e depois}
+\subsection{Montagem da nota}
+Antes (legado, em \code{src/test}): la\c{c}os e vari\'aveis tempor\'arias misturados com a montagem do texto.
+\begin{lstlisting}
+StringBuilder result = new StringBuilder();
+for (ReceiptItem item : receipt.getItems()) {
+    String receiptItem = presentReceiptItem(item);
+    result.append(receiptItem);
+}
+for (Discount discount : receipt.getDiscounts()) {
+    String discountPresentation = presentDiscount(discount);
+    result.append(discountPresentation);
+}
+result.append("\n");
+result.append(presentTotal(receipt));
+return result.toString();
+\end{lstlisting}
+Depois (implementado, em \code{src/main}): o m\'etodo principal l\^e como a estrutura da nota.
+\begin{lstlisting}
+@Override
+public String printReceipt(Receipt receipt) {
+    return presentItems(receipt)
+            + presentDiscounts(receipt)
+            + BLANK_LINE
+            + presentTotal(receipt);
+}
+
+private String presentItems(Receipt receipt) {
+    return receipt.getItems()
+            .stream()
+            .map(this::presentReceiptItem)
+            .collect(Collectors.joining());
+}
+\end{lstlisting}
+
+\subsection{Total do item e assinatura de \code{addProduct}}
+\begin{lstlisting}
+// Antes
+public record ReceiptItem(Product product, double quantity, double price,
+                          double totalPrice) { }
+public void addProduct(Product p, double quantity, double price, double totalPrice) { ... }
+
+// Depois
+public record ReceiptItem(Product product, double quantity, double price) {
+    public double totalPrice() { return this.price * quantity; }
+    public boolean hasSingleQuantity() { return quantity == 1; }
+    public boolean isProductDiscrete() { return this.product.unit().isDiscrete(); }
+}
+public void addProduct(Product p, double quantity, double price) { ... }
+\end{lstlisting}
+
+\subsection{Formata\c{c}\~ao de n\'umeros extra\'ida}
+\begin{lstlisting}
+// Antes: métodos privados do ReceiptPrinter, com literais
+private static String presentQuantity(ReceiptItem item) {
+    return ProductUnit.EACH.equals(item.product().unit())
+            ? String.format("%d", (int)item.quantity())
+            : String.format(Locale.UK, "%.3f", item.quantity());
+}
+
+// Depois: classe ReceiptFormat, com constantes
+public static String quantity(ReceiptItem item) {
+    return item.isProductDiscrete()
+            ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
+            : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
+}
+\end{lstlisting}
+
+\subsection{Cole\c{c}\~ao de descontos encapsulada}
+\begin{lstlisting}
+// Antes: qualquer código podia apagar os descontos da nota
+public List<Discount> getDiscounts() { return discounts; }
+
+// Depois
+public List<Discount> getDiscounts() {
+    return Collections.unmodifiableList(discounts);
+}
+\end{lstlisting}
+
+\section{Sequ\c{c}\~ao de refatora\c{c}\~oes}
+Cada passo foi um \textit{commit} pequeno, com a su\'ite verde antes e depois.
+\begin{enumerate}
+\item Escrever testes de caracteriza\c{c}\~ao do printer antes de qualquer mudan\c{c}a: largura padr\~ao de 40 colunas, item de exatamente 1 kg, item de menos de 1 kg e produto por unidade com quantidade fracionada (\code{6df4392}, \code{5c8abf6}, \code{ae7cdbc}).
+\item Mover o \code{ReceiptPrinter} de \code{src/test} para \code{src/main} (\code{8a73523}), resolvendo o achado L-23.
+\item \textit{Inline Variable} nas vari\'aveis tempor\'arias de \code{printReceipt} (\code{f388a85}).
+\item \textit{Replace Magic Literal}: constantes \code{TOTAL_LABEL}, \code{PRICE_FORMAT}, \code{WEIGHT_FORMAT}, \code{DEFAULT_COLUMNS_WIDTH} e \code{DISCRETE_UNIT_FORMAT} (\code{2be4b82}, \code{8357b04}).
+\item Padronizar a constru\c{c}\~ao de texto com \code{StringBuilder} em \code{presentReceiptItem} (\code{d7621e2}).
+\item \textit{Decompose Conditional}: a condi\c{c}\~ao \code{item.quantity() != 1} ganhou nome (\code{87bf455}, corrigido em \code{c87c217}; ver se\c{c}\~ao 8).
+\item Usar \code{ProductUnit.isDiscrete()} e renomear o m\'etodo de alinhamento para \code{formatLineLeftAndRightAlignment} (\code{f47f832}).
+\item \textit{Replace Derived Variable with Query}: \code{totalPrice} passa a ser calculado, e \code{addProduct} perde um par\^ametro (\code{ea052bf}, \code{5b7296e}), resolvendo L-16 e L-17.
+\item \textit{Encapsulate Collection} em \code{getDiscounts()}, com o teste escrito antes da corre\c{c}\~ao (\code{81b2dbb}), resolvendo L-22.
+\item \textit{Move Function} de \code{hasSingleQuantity} e \textit{Hide Delegate} com \code{isProductDiscrete} (\code{0630a9c}, \code{0885804}).
+\item \textit{Extract Class}: formata\c{c}\~ao de n\'umeros para \code{ReceiptFormat} (\code{e92fd0e}).
+\item \textit{Extract Function} e \textit{Replace Loop with Pipeline} em \code{printReceipt} (\code{f6770c6}, \code{9808b0c}).
+\item Extrair a interface de sa\'ida e criar a classe do formato HTML (\code{8a005fd}, \code{f6356ad}).
+\item Mover as classes para os pacotes \code{model.receipt} e \code{printing} (pendente).
+\end{enumerate}
+
+\section{Melhorias de legibilidade}
+\begin{itemize}
+\item O m\'etodo principal do printer passa a ser um sum\'ario (itens, descontos, linha em branco, total), seguindo a regra de leitura de cima para baixo \cite{martin2011}.
+\item Condi\c{c}\~oes com nome de inten\c{c}\~ao em vez de compara\c{c}\~oes soltas (\code{hasSingleQuantity()}).
+\item Constantes com nome no lugar de literais de formato e de largura.
+\item Nomes de m\'etodo que dizem o que fazem: \code{formatLineWithWhitespace} passou a \code{formatLineLeftAndRightAlignment}.
+\item Remo\c{c}\~ao de coment\'arios desatualizados e de c\'odigo comentado nos testes (\code{5b7296e}).
+\item Testes nomeados pelo comportamento verificado, com valores esperados literais em vez de c\'opias da f\'ormula de produ\c{c}\~ao.
+\end{itemize}
+
+\section{Metas e verifica\c{c}\~ao}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.6cm}>{\centering\arraybackslash}p{2.1cm}>{\centering\arraybackslash}p{2.1cm}Y}
+\toprule \textbf{Indicador} & \textbf{Antes} & \textbf{Meta} & \textbf{Como medir} \\ \midrule
+Testes diretos das classes do grupo & 0 & $\ge 15$ & Contagem de \code{@Test} em \code{ReceiptTest} e \code{ReceiptPrinterTest}. \\
+\code{ReceiptPrinter} em \code{src/main} & n\~ao & sim & Estrutura do reposit\'orio. \\
+Cobertura de linhas do \code{ReceiptPrinter} & n\~ao medida & 100\% & JaCoCo. \\
+Par\^ametros de \code{Receipt.addProduct} & 4 & 3 & Revis\~ao de c\'odigo. \\
+Cole\c{c}\~oes mut\'aveis expostas pela \code{Receipt} & 1 & 0 & Teste de imutabilidade das duas listas. \\
+Literais de formato sem nome no printer & 6 & 0 & Revis\~ao de c\'odigo. \\
+Testes passando & 77 & todos & \code{mvn test} no CI. \\
+\bottomrule\end{tabularx}
+\caption{Metas da modulariza\c{c}\~ao (``Antes'' medido no in\'icio do trabalho do Grupo 3).}\end{table}
+
+\section{Atualiza\c{c}\~ao ap\'os a execu\c{c}\~ao}
+\subsection{Situa\c{c}\~ao dos passos}
+Os passos 1 a 13 foram conclu\'idos e integrados \`a \code{main} pelos PRs 18 a 27. O passo 14, a mudan\c{c}a de pacotes, foi adiado (ver abaixo). A classe \code{ReceiptPrinterHtml} foi criada, mas ainda devolve \code{null}: a interface est\'a pronta, e a implementa\c{c}\~ao do HTML \'e o pr\'oximo passo.
+
+\subsection{Diverg\^encias em rela\c{c}\~ao ao plano}
+\begin{itemize}
+\item \textbf{Defeito introduzido e corrigido.} No passo 6, a condi\c{c}\~ao \code{item.quantity() != 1} foi substitu\'ida por \code{item.quantity() > 1}. As duas n\~ao s\~ao equivalentes: quantidades menores que 1 (por exemplo, 0,5 kg) deixaram de imprimir a linha de quantidade. A su\'ite continuou verde porque nenhum teste usava quantidade abaixo de 1. O defeito foi encontrado na revis\~ao, o teste \code{printsLessThanOneKilo} foi escrito para reproduzi-lo e a condi\c{c}\~ao original foi restaurada. Uma su\'ite verde s\'o protege o que ela cobre.
+\item \textbf{Mudan\c{c}a de comportamento intencional.} Ao derivar \code{totalPrice} (passo 8), a \code{Receipt} deixou de aceitar um total incoerente com a quantidade e o pre\c{c}o. Tr\^es testes do printer, que informavam totais incoerentes (por exemplo, 2,50 para 2,5 $\times$ 1,25 = 3,125), tiveram o valor esperado ajustado. Isso \'e uma corre\c{c}\~ao, n\~ao uma refatora\c{c}\~ao pura, e est\'a registrado no documento do projeto.
+\item \textbf{Pacotes adiados.} A mudan\c{c}a para \code{model.receipt} exige \textit{imports} novos no \code{Teller} e em \code{SpecialOffers} (Grupo 1) e em sete arquivos de teste. Ela ser\'a feita em um \textit{commit} \'unico, combinado com os outros grupos.
+\item \textbf{\code{ReceiptFormat.total()}.} O m\'etodo devolve \code{"Total: "}, com dois-pontos e espa\c{c}o, que \'e um detalhe do layout em texto. Ele deve voltar para o \code{ReceiptPrinter} (\textit{Move Field}), para que a formata\c{c}\~ao compartilhada n\~ao carregue regras de um formato espec\'ifico.
+\end{itemize}
+
+\subsection{Resultados medidos}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.2cm}>{\centering\arraybackslash}p{1.9cm}>{\centering\arraybackslash}p{1.9cm}Y}
+\toprule \textbf{Indicador} & \textbf{Antes} & \textbf{Depois} & \textbf{Observa\c{c}\~ao} \\ \midrule
+Testes diretos das classes do grupo & 0 & 17 & 11 em \code{ReceiptPrinterTest} e 6 em \code{ReceiptTest}, todos passando. \\
+Testes da su\'ite do projeto & 77 & 101 & Todos passando no CI. \\
+Cobertura de linhas do \code{ReceiptPrinter} & n\~ao medida & 100\% & 34 de 34 linhas e 2 de 2 \textit{branches} (JaCoCo). \\
+Cobertura de \code{Receipt}, \code{ReceiptItem}, \code{ReceiptFormat} & -- & 100\% & 11, 4 e 5 linhas cobertas. \\
+Cobertura de \code{ReceiptPrinterHtml} & -- & 0\% & Classe ainda sem implementa\c{c}\~ao (2 linhas). \\
+Maior complexidade ciclom\'atica no printer & 3 & 2 & \code{printReceipt} passou de 3 para 1; o m\'aximo \'e \code{presentReceiptItem}. \\
+Linhas n\~ao vazias do printer & 62 & 59 + 21 & 59 no \code{ReceiptPrinter} e 21 na \code{ReceiptFormat}, extra\'ida dele. \\
+Achados do Passo 5 resolvidos & -- & 4 & L-16, L-17, L-22 e L-23. Pendentes: L-25 e L-03. \\
+\bottomrule\end{tabularx}
+\caption{Resultados da refatora\c{c}\~ao do Grupo 3 (contagens manuais e relat\'orio do JaCoCo).}\end{table}
+
+\section{Riscos e depend\^encias entre grupos}
+\begin{itemize}
+\item \textbf{Assinatura de \code{addProduct}:} a mudan\c{c}a de quatro para tr\^es par\^ametros alterou a chamada no \code{Teller} (Grupo 1). Mitiga\c{c}\~ao adotada: aviso ao grupo e \textit{pull request} pequeno, com toda a su\'ite verde.
+\item \textbf{\code{ProductUnit} \'e do Grupo 2:} o \code{ReceiptItem} usa \code{isDiscrete()} sem alter\'a-lo (\textit{Hide Delegate}). Qualquer mudan\c{c}a no tipo de quantidade feita pelo Grupo 2 deve preservar esse m\'etodo.
+\item \textbf{Mudan\c{c}a de pacotes:} afeta classes e testes dos tr\^es grupos. Mitiga\c{c}\~ao: um \'unico \textit{commit} de mudan\c{c}a de pacote, sem altera\c{c}\~ao de comportamento, feito quando n\~ao houver \textit{branches} abertos nas mesmas classes.
+\item \textbf{Tipo \code{Money}:} trocar \code{double} por um tipo monet\'ario afeta \code{Receipt}, \code{ReceiptItem}, \code{Discount} e todas as ofertas. Mitiga\c{c}\~ao: tratar como tarefa conjunta dos tr\^es grupos (ver plano de atualiza\c{c}\~ao tecnol\'ogica).
+\item \textbf{\code{FakeCatalog} compartilhado:} \'e usado por quase todos os testes. Mudar a exce\c{c}\~ao de produto ausente (L-25) exige revisar os testes que dependem dela.
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+\bibitem{fowler2020} FOWLER, Martin. \textbf{Refatora\c{c}\~ao}: aperfei\c{c}oando o design de c\'odigo existente. 2. ed. S\~ao Paulo: Novatec, 2020.
+\bibitem{martin2011} MARTIN, Robert C. \textbf{C\'odigo limpo}: habilidades pr\'aticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com c\'odigo legado}. Porto Alegre: Bookman, 2013.
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padr\~oes de projeto}: solu\c{c}\~oes reutiliz\'aveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+\end{thebibliography}
+\end{document}

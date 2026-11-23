@@ -1,0 +1,119 @@
+\input{preambulo}
+\renewcommand{\capa}[2]{%
+\begin{titlepage}\centering\singlespacing
+\includegraphics[width=4.5cm]{../../java/img/logo.png}\\[1.2cm]
+{\large UNIVERSIDADE CAT\'OLICA DO SALVADOR\\ Evolu\c{c}\~ao e Moderniza\c{c}\~ao de Sistemas Legados -- 2026.2}\\[3cm]
+{\Large\bfseries #1}\\[0.8cm]
+{\large #2}\\[1.2cm]
+{\large Projeto: SupermarketReceipt Refactoring Kata (Java)\\ Grupo 3: \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter}}\\[3cm]
+{\large S\'ergio Lopes J\'unior\\ Matr\'icula 200026817}\vfill
+{\large Salvador\\ Novembro de 2026}
+\end{titlepage}}
+\begin{document}
+\capa{Plano de Atualiza\c{c}\~ao Tecnol\'ogica e Estrat\'egias para Evolu\c{c}\~ao Futura}{Etapa 3 -- Refatora\c{c}\~ao Pr\'atica e Evolu\c{c}\~ao Aplicada}
+\tableofcontents\newpage
+
+\section{Introdu\c{c}\~ao e escopo}
+Este documento apresenta o plano de atualiza\c{c}\~ao tecnol\'ogica e as estrat\'egias de evolu\c{c}\~ao futura do sistema legado \textit{SupermarketReceipt Refactoring Kata}, na vers\~ao Java, do ponto de vista da \textbf{nota fiscal e da sua impress\~ao}. O diagn\'ostico que fundamenta o plano est\'a no Relat\'orio de D\'ebito T\'ecnico da Etapa 2.
+
+A divis\~ao do trabalho da Etapa 3 atribui ao Grupo 3 as classes \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter} e o cat\'alogo usado nos testes. Os aspectos comuns a todo o projeto, como an\'alise est\'atica, \textit{Maven Wrapper} e vers\~ao do JDK, est\~ao no plano do Grupo 1 e n\~ao s\~ao repetidos aqui. Este plano trata do que muda na tecnologia e na evolu\c{c}\~ao da nota fiscal, e indica os pontos de integra\c{c}\~ao com os Grupos 1 (ofertas) e 2 (carrinho e quantidades). A se\c{c}\~ao 6 registra o andamento ao final da Etapa 3.
+
+\section{Situa\c{c}\~ao tecnol\'ogica atual}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}Y}
+\toprule \textbf{Aspecto} & \textbf{Situa\c{c}\~ao observada no reposit\'orio} \\ \midrule
+Linguagem e \textit{build} & Java 17 e Maven, com as vers\~oes dos \textit{plugins} de compila\c{c}\~ao (3.13.0) e de testes (3.5.2) fixadas no \code{pom.xml}, para que o projeto compile igual em qualquer vers\~ao do Maven 3. \\
+Integra\c{c}\~ao cont\'inua & GitHub Actions executa \code{mvn test} com JDK 17 a cada \textit{push} e \textit{pull request} na \code{main}. \\
+Testes & 101 testes, todos passando; 17 deles testam diretamente as classes do grupo. Cobertura medida com JaCoCo 0.8.14. \\
+Sa\'ida da nota & Somente texto em colunas de largura fixa. Existe a interface \code{ReceiptPrinterFormatter} e a classe \code{ReceiptPrinterHtml}, ainda sem implementa\c{c}\~ao. \\
+Formata\c{c}\~ao de n\'umeros & \code{String.format} com \code{Locale.UK} fixo: o separador decimal \'e sempre o ponto, e n\~ao h\'a s\'imbolo de moeda. \\
+Dinheiro & \code{double} em \code{ReceiptItem}, \code{Discount} e \code{Receipt}, com arredondamento feito linha a linha na impress\~ao (L-03). \\
+Cat\'alogo & Apenas a interface \code{SupermarketCatalog} e o \code{FakeCatalog} dos testes, que usa o nome do produto como chave e lan\c{c}a \code{NullPointerException} para produto ausente (L-25). \\
+Testes do printer & Sa\'ida esperada montada por concatena\c{c}\~ao de \textit{strings} e \code{" ".repeat(n)}. A biblioteca ApprovalTests 28.0.0 est\'a no \code{pom.xml}, mas nenhum teste a utiliza. \\
+\bottomrule\end{tabularx}
+\caption{Estado tecnol\'ogico da nota fiscal e da impress\~ao.}\end{table}
+
+O problema mais concreto \'e o arredondamento. Uma nota com um item de 1,00 e um desconto de $-0{,}995$ \'e impressa assim pelo c\'odigo atual:
+\begin{lstlisting}[language={}]
+toothbrush      1.00
+x(toothbrush)  -1.00
+
+Total:          0.01
+\end{lstlisting}
+As linhas somam 0,00, mas o total impresso \'e 0,01, porque cada linha \'e arredondada separadamente a partir de um \code{double}. Em uma nota fiscal real, essa diverg\^encia n\~ao \'e aceit\'avel.
+
+\section{Plano de atualiza\c{c}\~ao tecnol\'ogica}
+O plano \'e dividido em fases curtas e independentes. Cada fase termina com todos os testes passando no CI \cite{feathers2013}.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{4.5cm}Y}
+\toprule \textbf{Fase} & \textbf{A\c{c}\~ao} & \textbf{Resultado esperado e crit\'erio de aceite} \\ \midrule
+0 & Medir a cobertura das classes do grupo com o JaCoCo j\'a configurado no projeto. & Linha de base registrada; meta de 100\% das linhas do \code{ReceiptPrinter}. \\
+1 & Reescrever as sa\'idas esperadas dos testes do printer com \textit{text blocks} (Java 15 ou superior). & A nota esperada aparece no teste exatamente como impressa, sem concatena\c{c}\~ao nem contagem de espa\c{c}os. \\
+2 & Criar um teste \textit{golden master} da nota completa com ApprovalTests, j\'a presente no \code{pom.xml}. & Uma nota com os quatro tipos de oferta fica registrada em arquivo aprovado; qualquer mudan\c{c}a na sa\'ida aparece como diferen\c{c}a. \\
+3 & Introduzir o tipo \code{Money} (baseado em \code{BigDecimal}, duas casas e uma \'unica regra de arredondamento) em \code{ReceiptItem}, \code{Discount} e \code{Receipt}, em conjunto com os Grupos 1 e 2. & O exemplo da se\c{c}\~ao 2 imprime um total igual \`a soma das linhas; os testes deixam de usar a toler\^ancia \code{DELTA}. \\
+4 & Tornar a formata\c{c}\~ao localiz\'avel: \code{NumberFormat} com \code{Locale} configur\'avel na \code{ReceiptFormat}. & A nota pode ser impressa no padr\~ao brasileiro (por exemplo, \texttt{R\$ 1,99}) sem alterar o printer. \\
+5 & Implementar o \code{ReceiptPrinterHtml}, com escape de caracteres especiais (\texttt{<}, \texttt{>}, \texttt{\&}, \texttt{"}). & Nota em tabela HTML coberta por testes, incluindo um teste com nome de produto que contenha HTML. \\
+6 & Substituir a \code{NullPointerException} do cat\'alogo por uma exce\c{c}\~ao de dom\'inio com mensagem clara (L-25). & Produto ausente gera erro que identifica o produto. \\
+7 & Documentar com Javadoc as classes p\'ublicas do grupo. & Regras do total e dos formatos descritas no c\'odigo. \\
+\bottomrule\end{tabularx}
+\caption{Fases da atualiza\c{c}\~ao tecnol\'ogica da nota fiscal.}\end{table}
+
+\section{Estrat\'egias para evolu\c{c}\~ao futura}
+\subsection{Novos formatos de sa\'ida (aberto/fechado)}
+A interface \code{ReceiptPrinterFormatter} separa o contrato (\code{printReceipt}) das implementa\c{c}\~oes, no padr\~ao \textit{Strategy} \cite{gamma2000}. Um novo formato, como HTML, JSON para uma API ou PDF, passa a ser uma nova classe, sem altera\c{c}\~ao no printer de texto \cite{martin2011}. A formata\c{c}\~ao de pre\c{c}o e de quantidade j\'a est\'a extra\'ida na \code{ReceiptFormat} e \'e compartilhada por todos os formatos. Se surgir um terceiro formato e a estrutura comum (itens, descontos, total) se repetir, o esqueleto pode ser extra\'ido em uma classe abstrata (\textit{Template Method}).
+
+\subsection{Separa\c{c}\~ao entre modelo e apresenta\c{c}\~ao}
+Os dados da nota (\code{Receipt}, \code{ReceiptItem}) e a sua apresenta\c{c}\~ao (\code{printing}) devem ficar em pacotes distintos, com depend\^encia em um \'unico sentido, como detalhado no plano de modulariza\c{c}\~ao do grupo. Isso permite trocar ou acrescentar formatos sem tocar no modelo.
+
+\subsection{Dinheiro como tipo do dom\'inio}
+O tipo \code{Money} da fase 3 \'e a base para qualquer evolu\c{c}\~ao fiscal: impostos por item, arredondamento conforme a legisla\c{c}\~ao e moedas diferentes. Ele deve ser introduzido uma \'unica vez, em conjunto pelos tr\^es grupos, porque atravessa nota, ofertas e cat\'alogo.
+
+\subsection{Cat\'alogo real}
+Hoje s\'o existe o cat\'alogo de testes. Uma implementa\c{c}\~ao de produ\c{c}\~ao, com persist\^encia em banco de dados, deve usar o produto completo como chave (nome e unidade), e n\~ao apenas o nome, e tratar produto ausente com uma exce\c{c}\~ao de dom\'inio.
+
+\subsection{Nota fiscal como servi\c{c}o}
+Em uma evolu\c{c}\~ao para uso por um ponto de venda, a nota pode ser exposta por uma API HTTP, usando um formato JSON implementado como mais uma estrat\'egia de sa\'ida. Assim como no plano do Grupo 1, recomenda-se manter um \textbf{mon\'olito modular}, com pacotes bem separados, adequado ao tamanho do sistema \cite{sommerville2019}.
+
+\section{Cronograma, riscos e viabilidade}
+As fases 0 a 2 s\~ao de baixo risco e cabem no prazo da disciplina. A fase 3 depende de coordena\c{c}\~ao entre os tr\^es grupos. As fases 4 a 7 s\~ao independentes e podem ser feitas em qualquer ordem.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{2cm}Y}
+\toprule \textbf{Risco} & \textbf{Impacto} & \textbf{Mitiga\c{c}\~ao} \\ \midrule
+Mudan\c{c}a de comportamento ao trocar \code{double} por \code{Money} & Alto & \textit{Golden master} da fase 2 antes da troca; diferen\c{c}as de centavos analisadas uma a uma e registradas como corre\c{c}\~ao. \\
+Conflitos entre grupos ao alterar \code{Receipt} e \code{Discount} & M\'edio & \textit{Pull requests} pequenos e combinados; a troca de tipo feita em um \'unico \textit{commit}. \\
+Testes do printer quebrarem por diferen\c{c}a de espa\c{c}os & M\'edio & \textit{Text blocks} (fase 1) deixam a sa\'ida esperada vis\'ivel e f\'acil de comparar. \\
+Inje\c{c}\~ao de HTML pelo nome do produto & M\'edio & Escape obrigat\'orio e teste espec\'ifico na fase 5. \\
+Prazo curto da disciplina & M\'edio & Priorizar as fases 0 a 2 e a 5; registrar as demais como evolu\c{c}\~ao. \\
+\bottomrule\end{tabularx}
+\caption{Riscos do plano.}\end{table}
+
+\section{Andamento do plano}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{3.2cm}Y}
+\toprule \textbf{Fase} & \textbf{Situa\c{c}\~ao} & \textbf{Registro} \\ \midrule
+0 & Conclu\'ida & Antes da refatora\c{c}\~ao, o \code{ReceiptPrinter} ficava em \code{src/test} e n\~ao era medido. Depois: 34 de 34 linhas e 2 de 2 \textit{branches} cobertos; \code{Receipt}, \code{ReceiptItem} e \code{ReceiptFormat} com 100\% das linhas. \\
+1, 2 & Pendentes & Os testes do printer ainda usam concatena\c{c}\~ao; o ApprovalTests segue sem uso. \\
+3 & Pendente & Tipo \code{Money}, em conjunto com os Grupos 1 e 2. O exemplo de arredondamento da se\c{c}\~ao 2 fica como justificativa registrada. \\
+4 & Preparada & A formata\c{c}\~ao j\'a est\'a concentrada na \code{ReceiptFormat}; falta tornar o \code{Locale} configur\'avel. \\
+5 & Parcial & Interface \code{ReceiptPrinterFormatter} criada e \code{ReceiptPrinter} adaptado; \code{ReceiptPrinterHtml} criado, mas ainda devolve \code{null} (0\% de cobertura). \\
+6, 7 & Pendentes & \code{FakeCatalog} ainda lan\c{c}a \code{NullPointerException}; classes sem Javadoc. \\
+\bottomrule\end{tabularx}
+\caption{Situa\c{c}\~ao das fases ao final da Etapa 3.}\end{table}
+
+\section{Indicadores de sucesso}
+\begin{itemize}
+\item Cobertura de 100\% das linhas do \code{ReceiptPrinter}, medida pelo JaCoCo (\textbf{atingido}: 34 de 34 linhas).
+\item Total impresso sempre igual \`a soma das linhas impressas, verificado por teste com o caso de $-0{,}995$ (pendente da fase 3).
+\item Inclus\~ao de um formato de sa\'ida sem alterar o \code{ReceiptPrinter} (estrutura pronta com a interface; falta a implementa\c{c}\~ao do HTML).
+\item Todos os testes de caracteriza\c{c}\~ao mantidos e passando no CI a cada fase (\textbf{atingido} at\'e aqui: 101 testes passando).
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com c\'odigo legado}. Porto Alegre: Bookman, 2013.
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padr\~oes de projeto}: solu\c{c}\~oes reutiliz\'aveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+\bibitem{martin2011} MARTIN, Robert C. \textbf{C\'odigo limpo}: habilidades pr\'aticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+\bibitem{sommerville2019} SOMMERVILLE, Ian. \textbf{Engenharia de software}. 10. ed. S\~ao Paulo: Pearson Education do Brasil, 2019.
+\end{thebibliography}
+\end{document}
