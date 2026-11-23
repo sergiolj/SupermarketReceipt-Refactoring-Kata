@@ -1,8 +1,11 @@
 package dojo.supermarket.model;
 
+import java.util.stream.Collectors;
+
 public class ReceiptPrinter implements ReceiptFormatter{
 
 	private static final int DEFAULT_COLUMNS_WIDTH = 40;
+	private static final String BLANK_LINE = "\n";
     private final int columns;
 
     public ReceiptPrinter() {
@@ -15,29 +18,24 @@ public class ReceiptPrinter implements ReceiptFormatter{
 
     @Override
     public String printReceipt(Receipt receipt) {
-        StringBuilder result = new StringBuilder();
-        result.append(presentItems(receipt));
-        result.append(presentDiscounts(receipt));
+    	return presentItems(receipt)
+    			+ presentDiscounts(receipt)
+    			+ BLANK_LINE
+    			+ presentTotal(receipt);
+    }
 
-        result.append("\n");
-        result.append(presentTotal(receipt));
-        return result.toString();
+    private String presentItems(Receipt receipt) {
+    	return receipt.getItems()
+    			.stream()
+    			.map(this::presentReceiptItem)
+    			.collect(Collectors.joining());
     }
     
-    private String presentItems(Receipt receipt) {
-        StringBuilder lines = new StringBuilder();
-        for (ReceiptItem item : receipt.getItems()) {
-            lines.append(presentReceiptItem(item));
-        }
-        return lines.toString();
-    }
-
     private String presentDiscounts(Receipt receipt) {
-        StringBuilder lines = new StringBuilder();
-        for (Discount discount : receipt.getDiscounts()) {
-            lines.append(presentDiscount(discount));
-        }
-        return lines.toString();
+    	return receipt.getDiscounts()
+    			.stream()
+    			.map(this::presentDiscount)
+    			.collect(Collectors.joining());
     }
 
     private String presentReceiptItem(ReceiptItem item) {
@@ -74,5 +72,4 @@ public class ReceiptPrinter implements ReceiptFormatter{
         line.append('\n');
         return line.toString();
     }
-
 }
