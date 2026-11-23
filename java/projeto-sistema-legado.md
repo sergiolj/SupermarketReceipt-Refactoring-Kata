@@ -50,7 +50,7 @@ O sistema não possui interface nem ponto de entrada (`main`); suas funcionalida
 | F-08 | Oferta 5 por valor fixo         | A cada 5 unidades, preço fixo definido na oferta; só se aplica com 5 ou mais unidades.                                            | `ShoppingCart.handleOffers`                   |
 | F-09 | Fechamento da compra (checkout) | Gera a nota fiscal: uma linha por item adicionado, com preço unitário e total, e aplica as ofertas sobre as quantidades acumuladas. | `Teller.checksOutArticlesFrom`                |
 | F-10 | Nota fiscal                     | Armazena itens e descontos e calcula o total (soma dos itens + descontos, que são valores negativos).                             | `Receipt`, `ReceiptItem`, `Discount`          |
-| F-11 | Impressão da nota               | Gera o texto da nota em colunas: itens, linha de quantidade, descontos e total (quantidade inteira para `EACH`, 3 casas para `KILO`). | `ReceiptPrinter` (em `src/test`)              |
+| F-11 | Impressão da nota               | Gera o texto da nota em colunas: itens, linha de quantidade, descontos e total (quantidade inteira para `EACH`, 3 casas para `KILO`). | `ReceiptPrinter` (movido de `src/test` para `src/main` na Etapa 3) |
 | F-12 | Oferta de pacote (*bundle*) | **Nova (Etapa 3).** Ao levar uma unidade de cada produto do conjunto, desconto percentual sobre o total do conjunto; só pacotes completos contam e soma-se às ofertas por produto. | `BundleOffer`, `SpecialOffers`, `Teller.addBundleOffer` |
 
 **Fora do escopo atual (não implementado):** persistência, interface de usuário e catálogo real.
@@ -354,6 +354,131 @@ Um único método concentra a complexidade do sistema. Cada nova oferta (como o 
   - Plano de atualização tecnológica e estratégias para evolução futura (ex: quebra de monolito, migração de banco, etc.).
   - Plano de modularização e melhorias de legibilidade/complexidade.
   - **Evidências de Código:** Trechos de código comparativos no padrão **"Antes" vs. "Depois"** com a devida explicação técnica das melhorias e testes automatizados.
+
+### Grupo 3: Nota fiscal e impressão (Sérgio Lopes Júnior)
+
+**Escopo:** `Receipt`, `ReceiptItem`, `Discount`, `ReceiptPrinter` e `SupermarketCatalog`/`FakeCatalog`. O trabalho foi integrado à `main` pelos PRs #18 a #22, em 23/11. Ao final, a suíte tem **80 testes, todos passando**.
+
+**Método:** cada refatoração foi feita em um commit próprio, com a suíte verde antes e depois. Antes de alterar o `ReceiptPrinter`, foram escritos testes de caracterização para registrar o comportamento atual, inclusive os defeitos do legado (FEATHERS, 2013).
+
+#### Testes de caracterização adicionados
+
+| Commit | Teste | Comportamento registrado |
+| ------ | ----- | ------------------------ |
+| `6df4392` | `printsSingleReceiptItemWithoutDiscountWithColumnArgument` | Impressão com largura de colunas informada no construtor. |
+| `6df4392` | `printsSingleReceiptItemWithoutDiscountDefautlColumnArgument` | Construtor padrão usa 40 colunas (protege a troca do número mágico `40` por constante). |
+| `6df4392` | `printsOneKiloItemHasNoMultiplicationLine` | Item com quantidade exatamente 1 não imprime a linha `preço * quantidade`. |
+| `5c8abf6` / `ae7cdbc` | `printsLessThanOneKilo` | Quantidade menor que 1 (0,5 kg) **imprime** a linha de quantidade. |
+| `ae7cdbc` | `printsProductDiscreteWithFractionQuantityBugInQuantityLine` | **Defeito legado registrado:** produto `EACH` com quantidade fracionada (2,5) imprime `0.99 * 2`, mas cobra 2,48. |
+| `81b2dbb` | `discountsListIsUnmodifiable` | A lista de descontos da nota não pode ser alterada por quem a consulta. |
+
+#### Refatorações aplicadas
+
+| Commit | Refatoração (referência) | Problema no legado | Resultado |
+| ------ | ------------------------ | ------------------ | --------- |
+| `8a73523` | *Move Class* (FOWLER, 2020) | `ReceiptPrinter` era código de produção dentro de `src/test` (L-23). | Classe em `src/main/java/dojo/supermarket/model`; o teste acompanha o pacote. |
+| `f388a85` | *Inline Variable* (FOWLER, 2020) | Variáveis temporárias em `printReceipt` só repassavam o valor. | `result.append(presentReceiptItem(item))` direto. |
+| `2be4b82`, `8357b04` | *Replace Magic Literal* (MARTIN, 2011, G25) | Literais `40`, `"Total: "`, `"%.2f"`, `"%.3f"` e `"%d"` espalhados. | Constantes `DEFAULT_COLUMNS_WIDTH`, `TOTAL_LABEL`, `PRICE_FORMAT`, `WEIGHT_FORMAT` e `DISCRETE_UNIT_FORMAT`. O método de alinhamento foi renomeado para `formatLineLeftAndRightAlignment` (*Rename Function*). |
+| `d7621e2` | Consistência de construção de texto | `presentReceiptItem` concatenava `String` com `+=`, enquanto o resto da classe usava `StringBuilder`. | `StringBuilder` em toda a classe. |
+| `87bf455`, `c87c217` | *Decompose Conditional* (FOWLER, 2020) | Condição `item.quantity() != 1` sem nome de intenção. | Método `hasQuantityLine(item)`. |
+| `f47f832` | *Move Function* para o dado (FOWLER, 2020) | O printer comparava `ProductUnit.EACH.equals(...)` para decidir o formato da quantidade. | Usa `unit().isDiscrete()`: a regra fica no `ProductUnit`. |
+| `ea052bf`, `5b7296e` | *Replace Derived Variable with Query* (FOWLER, 2020) | `ReceiptItem` guardava `totalPrice`, que é sempre `quantity * price`; `Receipt.addProduct` recebia quatro parâmetros (L-16). | `ReceiptItem(product, quantity, price)` com o método `totalPrice()`; `addProduct` com três parâmetros. O `import java.util.Objects` sem uso saiu (L-17). |
+| `81b2dbb` | *Encapsulate Collection* (FOWLER, 2020) | `getDiscounts()` devolvia a lista interna mutável (L-22). | Devolve `Collections.unmodifiableList`, como `getItems()`. |
+| `5b7296e` | Limpeza de comentários (MARTIN, 2011, cap. 4) | Código comentado e comentários desatualizados nos testes. | Comentários removidos. |
+
+#### Evidências "Antes" vs. "Depois"
+
+**1. Linha de quantidade e formato por tipo de unidade (`ReceiptPrinter`)**
+
+Antes:
+
+```java
+String line = formatLineWithWhitespace(name, totalPricePresentation);
+if (item.quantity() != 1) {
+    line += "  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n";
+}
+...
+return ProductUnit.EACH.equals(item.product().unit())
+        ? String.format("%d", (int)item.quantity())
+        : String.format(Locale.UK, "%.3f", item.quantity());
+```
+
+Depois:
+
+```java
+StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
+if (hasQuantityLine(item)) {
+    line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
+}
+...
+private boolean hasQuantityLine(ReceiptItem item) {
+    return item.quantity() != 1;
+}
+...
+return item.product().unit().isDiscrete()
+        ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
+        : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
+```
+
+A condição ganhou nome de intenção, os formatos viraram constantes e a decisão "quantidade inteira ou fracionada" passou a ser do `ProductUnit`.
+
+**2. Total do item calculado, não informado (`ReceiptItem` e `Receipt`)**
+
+Antes:
+
+```java
+public record ReceiptItem(Product product, double quantity, double price, double totalPrice) { }
+
+public void addProduct(Product p, double quantity, double price, double totalPrice) {
+    items.add(new ReceiptItem(p, quantity, price, totalPrice));
+}
+```
+
+Depois:
+
+```java
+public record ReceiptItem(Product product, double quantity, double price) {
+    public double totalPrice() {
+        return this.price * quantity;
+    }
+}
+
+public void addProduct(Product p, double quantity, double price) {
+    items.add(new ReceiptItem(p, quantity, price));
+}
+```
+
+O total deixa de ser um dado que pode ficar incoerente com a quantidade e o preço.
+
+**3. Coleção de descontos encapsulada (`Receipt`)**
+
+Antes: `return discounts;`. Qualquer código podia apagar os descontos da nota com `receipt.getDiscounts().clear()`.
+
+Depois: `return Collections.unmodifiableList(discounts);`. A tentativa de alteração lança `UnsupportedOperationException`, coberta pelo teste `discountsListIsUnmodifiable`.
+
+#### Defeito introduzido e corrigido durante a refatoração
+
+No commit `87bf455`, a condição `item.quantity() != 1` foi substituída por `item.quantity() > 1`. As duas não são equivalentes: quantidades menores que 1 (por exemplo, 0,5 kg) deixaram de imprimir a linha de quantidade. A suíte continuou verde porque nenhum teste usava quantidade abaixo de 1. O defeito foi encontrado na revisão, o teste `printsLessThanOneKilo` foi escrito para reproduzi-lo (`5c8abf6`) e a condição original foi restaurada (`c87c217`). O episódio mostra que uma suíte verde só protege o que ela cobre: os casos-limite precisam ser testados antes de alterar uma condição.
+
+#### Mudança de comportamento intencional
+
+Ao derivar `totalPrice` (`ea052bf`), três testes do printer tiveram os valores esperados alterados (por exemplo, de 2,50 para 3,13). Os testes antigos informavam um total incoerente com a quantidade e o preço (2,5 × 1,25 = 3,125, mas o total informado era 2,50), e a `Receipt` aceitava o valor sem conferir. Agora o total é sempre calculado. Isso é uma mudança de comportamento, não uma refatoração pura, e está registrada aqui por esse motivo.
+
+#### Situação dos achados do Grupo 3
+
+| ID | Situação | Observação |
+| -- | -------- | ---------- |
+| L-16 | Resolvido | `Receipt.addProduct` recebe três parâmetros; o total é derivado. |
+| L-17 | Resolvido | `ReceiptItem` não importa mais `java.util.Objects`. |
+| L-22 | Resolvido | `getDiscounts()` devolve visão imutável. |
+| L-23 | Resolvido | `ReceiptPrinter` está em `src/main`. |
+| L-25 | Pendente | `FakeCatalog.getUnitPrice` ainda lança `NullPointerException` para produto fora do catálogo; o mapa `products` é preenchido e nunca lido. |
+
+#### Pendências e evolução futura
+
+- **Arredondamento por linha (L-03):** cada linha é arredondada separadamente para duas casas. Com um item de 1,00 e um desconto de −0,995, a nota imprime `1.00`, `-1.00` e `Total: 0.01`: as linhas não somam o total. A correção depende de um tipo `Money` com regra de arredondamento única, previsto no plano de atualização tecnológica.
+- **Quantidade fracionada em produto `EACH`:** defeito legado registrado por teste e mantido de propósito durante a refatoração; a correção (validar a quantidade ou mudar o formato) deve ser decidida pela equipe e feita em commit `fix` separado.
+- **Novos formatos de saída:** a interface `ReceiptFormatter` (*Extract Interface*, padrão *Strategy*), que permitirá uma saída em HTML sem alterar o printer de texto, está no branch `feat/ReceiptInterface` e ainda não foi integrada à `main`.
 
 ## Etapa 4: Relatório Técnico Formal (Peso: 2,0 pontos)
 
