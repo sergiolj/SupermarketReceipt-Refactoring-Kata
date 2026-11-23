@@ -2,7 +2,6 @@ package dojo.supermarket.model;
 
 public class ReceiptPrinter implements ReceiptFormatter{
 
-
 	private static final int DEFAULT_COLUMNS_WIDTH = 40;
     private final int columns;
 
@@ -17,16 +16,28 @@ public class ReceiptPrinter implements ReceiptFormatter{
     @Override
     public String printReceipt(Receipt receipt) {
         StringBuilder result = new StringBuilder();
-        for (ReceiptItem item : receipt.getItems()) {
-            result.append(presentReceiptItem(item));
-        }
-        for (Discount discount : receipt.getDiscounts()) {
-            result.append(presentDiscount(discount));
-        }
+        result.append(presentItems(receipt));
+        result.append(presentDiscounts(receipt));
 
         result.append("\n");
         result.append(presentTotal(receipt));
         return result.toString();
+    }
+    
+    private String presentItems(Receipt receipt) {
+        StringBuilder lines = new StringBuilder();
+        for (ReceiptItem item : receipt.getItems()) {
+            lines.append(presentReceiptItem(item));
+        }
+        return lines.toString();
+    }
+
+    private String presentDiscounts(Receipt receipt) {
+        StringBuilder lines = new StringBuilder();
+        for (Discount discount : receipt.getDiscounts()) {
+            lines.append(presentDiscount(discount));
+        }
+        return lines.toString();
     }
 
     private String presentReceiptItem(ReceiptItem item) {
