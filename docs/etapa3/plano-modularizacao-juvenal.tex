@@ -1,0 +1,423 @@
+\input{capa-juvenal}
+
+\capa{Plano de Modularização e Melhorias de Legibilidade e Complexidade}{Etapa 3 -- Refatoração Prática e Evolução Aplicada}
+
+\tableofcontents\newpage
+
+\section{Introdução e escopo}
+
+Este plano descreve as estratégias de modularização, validação e melhoria da legibilidade aplicadas às classes \code{ShoppingCart}, \code{ProductQuantity}, \code{Product} e \code{ProductUnit}, pertencentes ao Grupo 2. O trabalho concentra-se na eliminação de estado redundante no carrinho de compras, no estabelecimento de regras de validação para os dados do domínio e no encapsulamento das regras relacionadas às unidades de medida.
+
+O objetivo é reduzir inconsistências, melhorar a organização das responsabilidades e tornar as regras de domínio mais explícitas, preservando a compatibilidade com os demais componentes do sistema. Para isso, foram utilizadas técnicas do catálogo de refatorações de Fowler \cite{fowler2020}, especialmente \textit{Replace Derived Variable with Query}, além de validações nos construtores dos registros e encapsulamento de regras de negócio.
+
+Este documento apresenta o diagnóstico das classes antes das alterações, a arquitetura considerada para o escopo do grupo, as estratégias aplicadas, os trechos de código anteriores e posteriores e os resultados observados após a execução dos testes.
+
+\section{Ponto de partida}
+
+A análise do código original identificou oportunidades de melhoria relacionadas à duplicação de estado, à ausência de validações e à distribuição das regras de domínio entre as classes.
+
+Como não foi disponibilizado o relatório de débito técnico da Etapa 2, os indicadores desta seção representam observações realizadas diretamente sobre a implementação original, sem atribuição de identificadores ou métricas que não puderam ser confirmados.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.5cm}Y}
+\toprule
+\textbf{Indicador observado} & \textbf{Situação encontrada} \\
+\midrule
+Estado mantido em \code{ShoppingCart} & Duas estruturas armazenavam informações relacionadas: uma lista de adições individuais e um mapa com as quantidades agregadas por produto. \\
+\addlinespace
+Sincronização de dados & O método \code{addItemQuantity} precisava atualizar simultaneamente a lista e o mapa, criando a possibilidade de divergência entre as estruturas. \\
+\addlinespace
+Validação de \code{Product} & O registro não verificava se o nome do produto era nulo, vazio ou composto somente por espaços, nem se a unidade era nula. \\
+\addlinespace
+Validação de \code{ProductQuantity} & Não existiam verificações próprias para produto nulo, quantidade negativa, valores não finitos ou compatibilidade entre quantidade e unidade. \\
+\addlinespace
+Responsabilidade de \code{ProductUnit} & O enum identificava as unidades discretas e fracionáveis por meio de um atributo booleano, mas não oferecia um método para consultar diretamente a compatibilidade de uma quantidade. \\
+\addlinespace
+Representação das quantidades & O tipo \code{double} era utilizado para representar quantidades, permitindo valores que precisavam de validação adicional. \\
+\addlinespace
+Rede de segurança & A classe \code{ShoppingCart} já possuía testes de comportamento. Foram acrescentados testes específicos para as validações de produto, quantidade e unidade. \\
+\bottomrule
+\end{tabularx}
+\caption{Diagnóstico qualitativo das classes do Grupo 2 antes da refatoração.}
+\end{table}
+
+A principal oportunidade de melhoria estava no \code{ShoppingCart}, que mantinha duas representações do mesmo conjunto de informações. Além disso, os registros \code{Product} e \code{ProductQuantity} permitiam a criação de objetos com dados inválidos, transferindo para outras partes do sistema a responsabilidade de lidar com essas situações.
+
+\section{Arquitetura-alvo}
+
+\subsection{Componentes e responsabilidades}
+
+A estratégia adotada foi manter as classes do Grupo 2 no pacote \code{dojo.supermarket.model}, respeitando a organização existente e evitando mudanças estruturais que exigiriam alterações nas responsabilidades dos demais grupos.
+
+A arquitetura proposta concentra cada regra na classe mais relacionada ao conceito que ela representa.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.2cm}Y}
+\toprule
+\textbf{Classe} & \textbf{Responsabilidade} & \textbf{Estratégia adotada} \\
+\midrule
+\code{ShoppingCart} & Manter os itens adicionados e disponibilizar as quantidades agregadas por produto. & Utilizar a lista como fonte única de dados e calcular o mapa agregado sob demanda. \\
+\addlinespace
+\code{ProductQuantity} & Representar um produto associado a determinada quantidade. & Validar a referência do produto, a quantidade e sua compatibilidade com a unidade. \\
+\addlinespace
+\code{Product} & Representar os dados fundamentais de um produto. & Validar o nome e a unidade durante a construção do registro. \\
+\addlinespace
+\code{ProductUnit} & Representar as unidades de medida disponíveis. & Encapsular a regra que determina se uma unidade aceita quantidades fracionárias ou exige valores inteiros. \\
+\bottomrule
+\end{tabularx}
+\caption{Responsabilidades das classes após a refatoração.}
+\end{table}
+
+A organização em pacotes não foi alterada. As classes permanecem no pacote \code{dojo.supermarket.model}, pois a extração de novos pacotes não era necessária para resolver os problemas identificados no escopo do grupo.
+
+\subsection{Desenho das estratégias de refatoração}
+
+\begin{itemize}
+
+\item \code{ShoppingCart}: a lista \code{items} passa a ser a única estrutura persistente responsável por armazenar as adições realizadas. O mapa de quantidades é construído quando solicitado, eliminando a necessidade de sincronizar duas estruturas durante cada operação de inclusão.
+
+\item \code{ProductQuantity}: o construtor compacto do record passa a verificar se o produto é válido, se a quantidade é finita e não negativa e se a unidade permite a quantidade informada.
+
+\item \code{Product}: o construtor compacto verifica se o nome não é nulo nem vazio e se a unidade foi informada.
+
+\item \code{ProductUnit}: o método \code{acceptsQuantity(double quantity)} concentra a regra de compatibilidade entre a unidade e a quantidade. O método \code{isDiscrete()} também permite consultar diretamente se a unidade exige quantidades inteiras.
+
+\end{itemize}
+
+\textbf{Decisão tomada:} a validação de quantidades negativas e de valores não finitos permanece em \code{ProductQuantity}. O método \code{acceptsQuantity} de \code{ProductUnit} trata especificamente a compatibilidade entre a quantidade e a característica da unidade. Dessa forma, cada classe mantém uma responsabilidade bem definida.
+
+\section{Antes e depois}
+
+\subsection{Antes: estado duplicado no carrinho}
+
+Na implementação original, o carrinho mantinha uma lista de adições individuais e um mapa com as quantidades agregadas. O método \code{addItemQuantity} precisava atualizar as duas estruturas:
+
+\begin{lstlisting}
+private final List<ProductQuantity> items = new ArrayList<>();
+private final Map<Product, Double> productQuantities = new HashMap<>();
+
+public void addItemQuantity(Product product, double quantity) {
+    items.add(new ProductQuantity(product, quantity));
+
+    if (productQuantities.containsKey(product)) {
+        productQuantities.put(
+            product,
+            productQuantities.get(product) + quantity
+        );
+    } else {
+        productQuantities.put(product, quantity);
+    }
+}
+\end{lstlisting}
+
+Essa abordagem mantinha informações derivadas em memória. Como as duas estruturas precisavam representar os mesmos dados, qualquer alteração na lógica de inclusão deveria preservar a sincronização entre elas.
+
+\subsection{Depois: cálculo das quantidades sob demanda}
+
+A refatoração removeu o mapa persistente e passou a construir a agregação a partir da lista de itens:
+
+\begin{lstlisting}
+private final List<ProductQuantity> items = new ArrayList<>();
+
+Map<Product, Double> productQuantities() {
+    Map<Product, Double> quantities = new HashMap<>();
+
+    for (ProductQuantity item : items) {
+        quantities.merge(
+            item.product(),
+            item.quantity(),
+            Double::sum
+        );
+    }
+
+    return Collections.unmodifiableMap(quantities);
+}
+
+public void addItemQuantity(Product product, double quantity) {
+    items.add(new ProductQuantity(product, quantity));
+}
+\end{lstlisting}
+
+Essa alteração aplica a técnica \textit{Replace Derived Variable with Query} \cite{fowler2020}. A lista passa a ser a fonte única de dados, enquanto o mapa representa uma consulta derivada.
+
+O uso de \code{merge} simplifica a agregação das quantidades de produtos repetidos. O retorno de \code{Collections.unmodifiableMap} mantém a proteção contra modificações externas no resultado da consulta.
+
+\subsection{Validação dos dados de produto e quantidade}
+
+Antes da refatoração, os registros não possuíam validações próprias. A criação de objetos com informações inválidas era possível, mesmo quando essas informações não representavam um estado adequado do domínio.
+
+Após a alteração, \code{Product} passou a validar seus dados:
+
+\begin{lstlisting}
+public record Product(String name, ProductUnit unit) {
+
+    public Product {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException(
+                "Product name cannot be null or blank"
+            );
+        }
+
+        if (unit == null) {
+            throw new IllegalArgumentException(
+                "Product unit cannot be null"
+            );
+        }
+    }
+}
+\end{lstlisting}
+
+O registro \code{ProductQuantity} passou a concentrar as validações relacionadas à quantidade:
+
+\begin{lstlisting}
+public record ProductQuantity(
+        Product product,
+        double quantity) {
+
+    public ProductQuantity {
+        if (product == null) {
+            throw new IllegalArgumentException(
+                "Product cannot be null"
+            );
+        }
+
+        if (!Double.isFinite(quantity) || quantity < 0) {
+            throw new IllegalArgumentException(
+                "Quantity must be finite and non-negative"
+            );
+        }
+
+        if (!product.unit().acceptsQuantity(quantity)) {
+            throw new IllegalArgumentException(
+                "Quantity must be an integer for discrete units"
+            );
+        }
+    }
+}
+\end{lstlisting}
+
+Com essas verificações, os objetos passam a impedir a criação de estados incompatíveis com as regras estabelecidas para o domínio.
+
+A quantidade zero foi mantida como válida. Para unidades fracionáveis, valores decimais continuam permitidos, desde que sejam finitos e não negativos. Para unidades discretas, somente quantidades inteiras são aceitas.
+
+\subsection{Encapsulamento da regra de unidade}
+
+Anteriormente, \code{ProductUnit} armazenava apenas uma característica booleana que identificava se a unidade era discreta:
+
+\begin{lstlisting}
+public enum ProductUnit {
+    KILO(false), EACH(true);
+
+    private final boolean discrete;
+
+    ProductUnit(boolean discrete) {
+        this.discrete = discrete;
+    }
+}
+\end{lstlisting}
+
+Após a refatoração, foram adicionados métodos que tornam essa característica acessível por meio de operações com significado no domínio:
+
+\begin{lstlisting}
+public enum ProductUnit {
+    KILO(false), EACH(true);
+
+    private final boolean discrete;
+
+    ProductUnit(boolean discrete) {
+        this.discrete = discrete;
+    }
+
+    public boolean isDiscrete() {
+        return discrete;
+    }
+
+    public boolean acceptsQuantity(double quantity) {
+        return !discrete || quantity == Math.floor(quantity);
+    }
+}
+\end{lstlisting}
+
+A unidade \code{KILO} aceita quantidades fracionárias, enquanto \code{EACH} exige valores inteiros. A regra deixa de depender de verificações externas sobre o atributo booleano e passa a ser expressa diretamente pelo método \code{acceptsQuantity}.
+
+\section{Sequência de refatorações}
+
+As alterações foram organizadas em etapas pequenas, permitindo verificar o comportamento do sistema durante o desenvolvimento. A estratégia segue a abordagem de evolução gradual de código legado descrita por Feathers \cite{feathers2013}.
+
+\begin{enumerate}
+
+\item Analisar a implementação original de \code{ShoppingCart}, identificando a duplicação entre a lista de itens e o mapa de quantidades agregadas.
+
+\item Remover o mapa persistente e implementar o cálculo das quantidades sob demanda, utilizando a lista como fonte única de dados (\textit{Replace Derived Variable with Query}).
+
+\item Preservar a imutabilidade das estruturas disponibilizadas pelos métodos \code{getItems()} e \code{productQuantities()}, evitando que consumidores externos alterem diretamente o estado do carrinho.
+
+\item Implementar validações no construtor compacto de \code{Product}, impedindo nomes nulos, vazios ou compostos somente por espaços e unidades nulas.
+
+\item Implementar validações no construtor compacto de \code{ProductQuantity}, verificando produto nulo, quantidades negativas, valores não finitos e compatibilidade com a unidade.
+
+\item Encapsular em \code{ProductUnit} a regra de aceitação de quantidades, adicionando os métodos \code{isDiscrete()} e \code{acceptsQuantity(double quantity)}.
+
+\item Criar testes unitários para as regras de validação dos registros e das unidades, além de executar a suíte completa para verificar a compatibilidade com os demais componentes.
+
+\end{enumerate}
+
+\section{Melhorias de legibilidade}
+
+As alterações realizadas buscaram tornar o código mais expressivo, reduzir responsabilidades desnecessárias e aproximar as operações da linguagem do domínio.
+
+\begin{itemize}
+
+\item \textbf{Fonte única de dados:} a remoção do mapa persistente de \code{ShoppingCart} eliminou a necessidade de manter duas estruturas sincronizadas.
+
+\item \textbf{Agregação expressiva:} o uso de \code{Map.merge} com \code{Double::sum} tornou a acumulação das quantidades mais direta e reduziu a quantidade de condicionais.
+
+\item \textbf{Validação próxima dos dados:} os construtores compactos de \code{Product} e \code{ProductQuantity} impedem a criação de objetos inválidos no momento de sua construção.
+
+\item \textbf{Encapsulamento da regra de unidade:} \code{acceptsQuantity} expressa diretamente a operação de verificar se uma unidade aceita determinada quantidade.
+
+\item \textbf{Separação de responsabilidades:} cada classe passou a concentrar as regras relacionadas ao conceito que representa, evitando distribuir validações por diferentes componentes.
+
+\item \textbf{Preservação da imutabilidade:} os métodos de consulta do carrinho continuam disponibilizando coleções não modificáveis, protegendo o estado interno.
+
+\item \textbf{Testes orientados ao comportamento:} foram acrescentados testes que verificam situações válidas e inválidas, incluindo valores extremos e as diferenças entre unidades discretas e fracionáveis.
+
+\end{itemize}
+
+Essas melhorias estão alinhadas aos princípios de legibilidade e organização de responsabilidades apresentados por Martin \cite{martin2011}.
+
+\section{Metas e verificação}
+
+As metas foram definidas considerando os problemas observados na implementação original e as mudanças efetivamente realizadas. Como não foi disponibilizado um levantamento quantitativo da Etapa 2, os indicadores iniciais são apresentados de forma qualitativa sempre que não existe uma medição confiável.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{3.0cm}Y}
+\toprule
+\textbf{Indicador} & \textbf{Antes} & \textbf{Meta} & \textbf{Como verificar} \\
+\midrule
+Estruturas persistentes de quantidades no carrinho & Lista e mapa & Uma fonte persistente de dados & Inspeção dos atributos de \code{ShoppingCart}. \\
+\addlinespace
+Sincronização de estruturas & Atualização de duas estruturas & Eliminar sincronização manual & Revisão de \code{addItemQuantity}. \\
+\addlinespace
+Validação de \code{Product} & Inexistente & Validar nome e unidade & Testes de criação de produtos. \\
+\addlinespace
+Validação de \code{ProductQuantity} & Inexistente & Validar produto e quantidade & Testes de valores válidos e inválidos. \\
+\addlinespace
+Regra de unidade & Característica booleana sem operação específica & Regra encapsulada em método & Testes de \code{acceptsQuantity}. \\
+\addlinespace
+Testes automatizados & Testes existentes de comportamento do carrinho & Preservar testes existentes e acrescentar testes de validação & Execução de \code{mvn test}. \\
+\bottomrule
+\end{tabularx}
+\caption{Metas de modularização e critérios de verificação do Grupo 2.}
+\end{table}
+
+A verificação principal foi realizada por meio da execução da suíte automatizada do projeto:
+
+\begin{lstlisting}
+mvn -f java/pom.xml clean test
+\end{lstlisting}
+
+A execução foi concluída sem erros, indicando que as alterações não provocaram falhas nos testes executados.
+
+\section{Atualização após a execução}
+
+\subsection{Situação dos passos}
+
+As etapas previstas para o Grupo 2 foram concluídas:
+
+\begin{itemize}
+
+\item A duplicação de estado em \code{ShoppingCart} foi eliminada, mantendo a lista de itens como fonte única de dados.
+
+\item O mapa de quantidades passou a ser calculado sob demanda, preservando a compatibilidade com os consumidores que utilizam o método \code{productQuantities()}.
+
+\item Os métodos de consulta continuaram protegendo as estruturas internas por meio de coleções não modificáveis.
+
+\item \code{Product} passou a validar o nome e a unidade informados durante sua construção.
+
+\item \code{ProductQuantity} passou a validar a referência do produto, a quantidade e a compatibilidade entre quantidade e unidade.
+
+\item \code{ProductUnit} passou a disponibilizar métodos que expressam diretamente as características das unidades e suas regras de aceitação.
+
+\item Foram adicionados testes específicos para as validações de produto, quantidade e unidade, e a suíte completa foi executada sem erros.
+
+\end{itemize}
+
+\subsection{Decisões e divergências em relação à proposta}
+
+Durante a implementação, algumas decisões foram tomadas para preservar a compatibilidade e manter o escopo da refatoração controlado.
+
+\begin{itemize}
+
+\item \textbf{Cálculo sob demanda:} a agregação das quantidades passou a percorrer a lista de itens sempre que o método \code{productQuantities()} é chamado. Essa decisão elimina a duplicação de estado, mas introduz um custo de processamento proporcional ao número de itens armazenados. Para o escopo atual, a simplificação e a redução do risco de inconsistência foram consideradas mais importantes do que manter uma estrutura agregada persistente.
+
+\item \textbf{Quantidade zero permitida:} a validação rejeita valores negativos e não finitos, mas permite zero. Essa decisão preserva a possibilidade de representar uma quantidade nula sem introduzir uma restrição adicional que não era necessária para o comportamento existente.
+
+\item \textbf{Validação de unidades discretas:} foi adotada a regra de que produtos vendidos por unidade (\code{EACH}) devem possuir quantidades inteiras. Produtos vendidos por peso (\code{KILO}) continuam aceitando valores fracionários.
+
+\item \textbf{Tipo numérico preservado:} o tipo \code{double} foi mantido para evitar uma alteração de maior alcance nas interfaces utilizadas pelos grupos responsáveis por ofertas, caixa e recibo. A substituição por um tipo decimal mais adequado permanece como possibilidade de evolução futura.
+
+\item \textbf{Organização em pacotes preservada:} as classes permaneceram em \code{dojo.supermarket.model}. A refatoração concentrou-se na organização interna e nas responsabilidades das classes, sem introduzir mudanças desnecessárias na estrutura de pacotes.
+
+\end{itemize}
+
+\subsection{Resultados observados}
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.2cm}Y}
+\toprule
+\textbf{Indicador} & \textbf{Resultado} & \textbf{Observação} \\
+\midrule
+Estado persistente do carrinho & Uma lista & O mapa de quantidades deixou de ser mantido como atributo. \\
+\addlinespace
+Agregação de quantidades & Sob demanda & O método \code{productQuantities()} constrói o resultado a partir dos itens. \\
+\addlinespace
+Validação de produtos & Implementada & Nome e unidade são verificados no construtor. \\
+\addlinespace
+Validação de quantidades & Implementada & Produto, valores finitos, não negatividade e compatibilidade com a unidade são verificados. \\
+\addlinespace
+Regra de unidade & Encapsulada & \code{ProductUnit} disponibiliza \code{isDiscrete()} e \code{acceptsQuantity()}. \\
+\addlinespace
+Testes automatizados & Execução sem erros & A suíte completa foi executada com \code{mvn -f java/pom.xml clean test}. \\
+\addlinespace
+Compatibilidade com os demais componentes & Preservada nos testes executados & As assinaturas utilizadas pelos consumidores foram mantidas. \\
+\bottomrule
+\end{tabularx}
+\caption{Resultados observados após a refatoração do Grupo 2.}
+\end{table}
+
+Os resultados demonstram que as principais metas estruturais foram alcançadas. A remoção do estado duplicado simplificou o carrinho, enquanto as validações passaram a impedir a construção de objetos com informações incompatíveis com as regras adotadas para o domínio.
+
+Não foi realizada uma comparação quantitativa de complexidade ciclomática ou cobertura de código antes e depois. Por esse motivo, os resultados são apresentados com base nas alterações verificáveis e na execução dos testes automatizados.
+
+\section{Riscos e dependências entre grupos}
+
+As alterações realizadas no Grupo 2 possuem pontos de integração com os demais componentes do sistema. Os principais riscos e suas respectivas estratégias de mitigação são:
+
+\begin{itemize}
+
+\item \textbf{Dependência do carrinho pelo Grupo 1:} o componente responsável pelas ofertas utiliza \code{productQuantities()} para obter as quantidades agregadas. A implementação manteve essa interface, preservando o contrato esperado e alterando somente a forma como o resultado é produzido.
+
+\item \textbf{Dependência do carrinho pelo Grupo 3:} o processamento dos itens para composição do recibo utiliza a lista disponibilizada por \code{getItems()}. A estrutura e a ordem das adições foram preservadas, evitando mudanças no comportamento esperado pelo componente de impressão.
+
+\item \textbf{Representação numérica:} a utilização de \code{double} permanece como uma limitação potencial para operações que exigem precisão decimal, especialmente em cenários financeiros. Uma futura substituição por \code{BigDecimal} exigiria alinhamento entre os grupos, pois afetaria as interfaces de quantidade, oferta, desconto e recibo.
+
+\item \textbf{Regra de quantidade discreta:} a validação de quantidades inteiras para \code{EACH} representa uma regra de domínio adotada durante a refatoração. Alterações futuras nessa regra deverão considerar os requisitos de todos os componentes que utilizam produtos e quantidades.
+
+\item \textbf{Custo da agregação sob demanda:} como o mapa é reconstruído a cada consulta, o processamento cresce proporcionalmente ao número de itens armazenados. Caso o volume de operações aumente significativamente, será necessário avaliar o desempenho dessa abordagem sem reintroduzir inconsistências de estado.
+
+\item \textbf{Regressões de comportamento:} a preservação dos testes existentes e a inclusão de testes específicos para as novas validações reduzem o risco de alterações não intencionais. A execução da suíte completa deve continuar fazendo parte do processo de integração.
+
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+
+\bibitem{fowler2020} FOWLER, Martin. \textbf{Refatoração}: aperfeiçoando o design de código existente. 2. ed. São Paulo: Novatec, 2020.
+
+\bibitem{martin2011} MARTIN, Robert C. \textbf{Código limpo}: habilidades práticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com código legado}. Porto Alegre: Bookman, 2013.
+
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padrões de projeto}: soluções reutilizáveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+
+\end{thebibliography}

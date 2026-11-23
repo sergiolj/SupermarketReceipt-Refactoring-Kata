@@ -1,0 +1,257 @@
+\input{capa-juvenal}
+
+\capa{Plano de Atualização Tecnológica e Estratégias para Evolução Futura}{Etapa 3 -- Refatoração Prática e Evolução Aplicada}
+
+\tableofcontents\newpage
+
+\section{Introdução e escopo}
+
+Este documento apresenta o plano de atualização tecnológica e as estratégias de evolução futura do sistema legado \textit{SupermarketReceipt Refactoring Kata}, desenvolvido em Java. O sistema simula operações de um caixa de supermercado, incluindo o gerenciamento de produtos, quantidades, aplicação de promoções e emissão de recibos.
+
+A divisão do trabalho da Etapa 3 atribui ao Grupo 2 as classes \code{ShoppingCart}, \code{ProductQuantity}, \code{Product} e \code{ProductUnit}. O principal objetivo desse grupo foi melhorar a consistência dos dados do domínio, eliminar a duplicação de estado no carrinho de compras e estabelecer validações para os objetos que representam produtos e quantidades.
+
+Este plano considera as tecnologias já utilizadas pelo projeto e apresenta possibilidades de evolução que podem melhorar sua manutenção, precisão numérica, qualidade e capacidade de expansão. Também são identificados os pontos de integração com o Grupo 1, responsável pelas ofertas, e com o Grupo 3, responsável pelo recibo e pela impressão.
+
+É importante distinguir as mudanças efetivamente implementadas das propostas futuras. As alterações realizadas pelo Grupo 2 estão registradas na seção 6, enquanto as demais iniciativas são apresentadas como oportunidades de evolução, sem pressupor que já tenham sido executadas.
+
+\section{Situação tecnológica atual}
+
+O projeto utiliza uma estrutura baseada em Java e Maven, com testes automatizados e organização das classes de domínio em um único pacote.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}Y}
+\toprule
+\textbf{Aspecto} & \textbf{Situação observada no projeto} \\
+\midrule
+Linguagem & Java 17, com utilização de recursos como \textit{records} e \textit{enums}. \\
+\addlinespace
+Build e dependências & Maven, com gerenciamento de dependências e execução automatizada dos testes. \\
+\addlinespace
+Testes & JUnit Jupiter 5.11.4 e ApprovalTests. Foram acrescentados testes unitários para as validações das classes do Grupo 2. \\
+\addlinespace
+Integração contínua & O projeto possui configuração de GitHub Actions para execução dos testes automatizados. \\
+\addlinespace
+Análise estática & Não foi implementada uma ferramenta específica de análise estática durante o trabalho do Grupo 2. \\
+\addlinespace
+Documentação & O projeto possui documentação de apoio, mas não foi realizada uma padronização completa de Javadoc nas classes do grupo. \\
+\addlinespace
+Modelo de dados & Produtos e quantidades são representados por \code{Product}, \code{ProductQuantity} e \code{ProductUnit}. O tipo \code{double} continua sendo utilizado para quantidades. \\
+\addlinespace
+Gerenciamento do carrinho & A lista de itens é a fonte única de dados persistentes. O mapa de quantidades agregadas é construído sob demanda. \\
+\addlinespace
+Estrutura de pacotes & As classes permanecem no pacote \code{dojo.supermarket.model}. \\
+\bottomrule
+\end{tabularx}
+\caption{Situação tecnológica do projeto considerando o escopo do Grupo 2.}
+\end{table}
+
+A versão Java 17 foi preservada durante a refatoração. Essa decisão evita introduzir uma atualização de ambiente que não era necessária para resolver os problemas encontrados nas classes do grupo e reduz o risco de incompatibilidade com a configuração existente de compilação e integração contínua.
+
+O uso de \code{double} também foi mantido. Embora esse tipo possa apresentar limitações de precisão em operações decimais, sua substituição afetaria interfaces utilizadas pelos demais componentes, exigindo coordenação entre os grupos.
+
+\section{Plano de atualização tecnológica}
+
+As propostas de atualização foram organizadas em fases, considerando o impacto de cada mudança e sua dependência em relação aos demais componentes.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{4.4cm}Y}
+\toprule
+\textbf{Fase} & \textbf{Ação} & \textbf{Resultado esperado e critério de aceite} \\
+\midrule
+0 & Consolidar os testes de validação de produtos, quantidades e unidades. & Objetos inválidos não são construídos e os comportamentos válidos continuam funcionando. \\
+\addlinespace
+1 & Avaliar a adoção de ferramentas de análise estática, como Checkstyle ou PMD. & Identificação de problemas de estilo, complexidade e manutenção, com critérios de qualidade definidos para o projeto. \\
+\addlinespace
+2 & Avaliar a adoção do Maven Wrapper. & Padronização da execução do Maven entre os integrantes, reduzindo dependências de instalações locais. \\
+\addlinespace
+3 & Avaliar a substituição de \code{double} por \code{BigDecimal} nas operações que exigem precisão decimal. & Representação decimal mais adequada, com testes específicos para cálculos e arredondamentos. \\
+\addlinespace
+4 & Avaliar a evolução do modelo de quantidades e unidades. & Regras de representação e validação mais explícitas, mantendo a compatibilidade com os componentes consumidores. \\
+\addlinespace
+5 & Ampliar a documentação técnica das classes de domínio. & Regras de validação, responsabilidades e limitações descritas por meio de Javadoc. \\
+\addlinespace
+6 & Avaliar a reorganização dos pacotes do sistema. & Separação mais clara entre modelo, ofertas, fechamento da compra e recibo, sem dependências circulares. \\
+\bottomrule
+\end{tabularx}
+\caption{Fases propostas para a evolução tecnológica do Grupo 2.}
+\end{table}
+
+As fases 0 a 2 representam melhorias de baixo impacto em relação à estrutura atual. As fases 3 e 4 exigem maior atenção, pois podem afetar contratos utilizados pelos outros grupos. As fases 5 e 6 podem ser realizadas gradualmente, conforme a necessidade de manutenção e expansão do projeto.
+
+\section{Estratégias para evolução futura}
+
+\subsection{Representação decimal com maior precisão}
+
+Atualmente, o projeto utiliza \code{double} para representar quantidades e valores relacionados aos cálculos de compra. Embora seja adequado para diversas operações numéricas, esse tipo utiliza representação binária de ponto flutuante e pode apresentar diferenças de precisão em determinadas operações decimais.
+
+Uma evolução possível é utilizar \code{BigDecimal} nos contextos que exigem precisão decimal, especialmente nos valores monetários.
+
+Essa mudança deve ser planejada em conjunto com os Grupos 1 e 3, pois as quantidades e os valores utilizados pelo carrinho também são consumidos pelas ofertas e pelo processamento dos recibos.
+
+A adoção de \code{BigDecimal} exigiria revisar operações aritméticas, regras de escala, arredondamento, comparações e testes. Portanto, não deve ser realizada como uma simples substituição de tipo.
+
+\subsection{Evolução do modelo de quantidades}
+
+A classe \code{ProductQuantity} atualmente representa um produto e sua quantidade utilizando \code{double}. A validação implementada impede quantidades negativas, valores não finitos e quantidades fracionárias para unidades discretas.
+
+Uma evolução futura poderia tornar a representação de quantidades mais especializada, utilizando tipos específicos para quantidades inteiras e fracionárias ou um objeto de valor responsável por essas regras.
+
+Essa abordagem poderia tornar ainda mais explícitas as diferenças entre produtos vendidos por unidade e produtos vendidos por peso.
+
+Entretanto, a adoção dessa solução precisa considerar a complexidade adicional e o impacto nas interfaces de ofertas e recibos. A estrutura atual atende ao escopo do projeto sem exigir uma hierarquia de classes ou abstrações adicionais.
+
+\subsection{Evolução da agregação do carrinho}
+
+A implementação atual utiliza a lista de \code{ProductQuantity} como fonte única de dados e calcula as quantidades agregadas quando \code{productQuantities()} é chamado.
+
+Essa abordagem reduz o risco de inconsistência entre estruturas, pois não existe mais a necessidade de atualizar uma lista e um mapa simultaneamente.
+
+Por outro lado, cada consulta percorre os itens armazenados no carrinho. Em cenários com um volume significativamente maior de operações, pode ser necessário avaliar alternativas de otimização.
+
+Uma possibilidade seria utilizar uma estrutura de agregação com atualização centralizada, desde que exista uma estratégia que impeça divergências entre os dados individuais e os totais calculados.
+
+A adoção dessa alternativa deve ser baseada em medições de desempenho, evitando introduzir complexidade prematuramente.
+
+\subsection{Regras de domínio mais extensíveis}
+
+As validações implementadas em \code{Product}, \code{ProductQuantity} e \code{ProductUnit} representam um primeiro passo para estabelecer regras de domínio mais explícitas.
+
+Uma evolução futura poderia ampliar essas regras para contemplar características adicionais dos produtos, como restrições específicas de comercialização, precisão permitida para quantidades fracionárias e limites operacionais.
+
+Essas regras devem permanecer próximas aos conceitos que representam, evitando que diferentes componentes implementem verificações duplicadas.
+
+A utilização de objetos de valor também pode ser considerada caso o domínio se torne mais complexo.
+
+\subsection{Organização modular do sistema}
+
+As classes do Grupo 2 permanecem no pacote \code{dojo.supermarket.model}, assim como outras classes do projeto.
+
+Para uma evolução futura, pode ser interessante organizar o sistema em pacotes com responsabilidades mais específicas, por exemplo:
+
+\begin{itemize}
+
+\item \code{model}: produtos, unidades e quantidades;
+
+\item \code{offer}: estratégias e regras de promoções;
+
+\item \code{checkout}: gerenciamento do carrinho e fechamento da compra;
+
+\item \code{receipt}: representação e impressão dos recibos.
+
+\end{itemize}
+
+Essa separação pode melhorar a localização das responsabilidades e facilitar a manutenção. Entretanto, a movimentação das classes deve considerar suas dependências atuais, evitando dependências circulares e alterações desnecessárias nos contratos públicos.
+
+Para o tamanho atual do projeto, recomenda-se preservar uma arquitetura de monólito modular, sem introduzir serviços independentes ou infraestrutura distribuída sem uma necessidade concreta.
+
+\subsection{Ampliação da qualidade automatizada}
+
+A suíte de testes foi ampliada para contemplar situações válidas e inválidas nas classes do Grupo 2.
+
+Como evolução, recomenda-se complementar os testes unitários com testes baseados em propriedades, especialmente para operações de agregação de quantidades e validações de unidades.
+
+Também pode ser útil incorporar ferramentas de análise estática e relatórios de cobertura ao processo de integração contínua.
+
+Essas ferramentas permitiriam acompanhar a evolução da qualidade do código e identificar regressões durante futuras alterações.
+
+\section{Cronograma, riscos e viabilidade}
+
+As propostas de evolução podem ser implementadas gradualmente, priorizando mudanças que tragam benefícios sem comprometer a compatibilidade do sistema.
+
+A adoção de ferramentas de qualidade e a ampliação da documentação possuem baixo impacto estrutural. Já a alteração do tipo numérico e a reorganização dos pacotes exigem planejamento e validação conjunta.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{1.8cm}Y}
+\toprule
+\textbf{Risco} & \textbf{Impacto} & \textbf{Mitigação} \\
+\midrule
+Alteração do tipo numérico & Alto & Planejar a mudança com os demais grupos, revisar as operações e criar testes de equivalência. \\
+\addlinespace
+Aumento da complexidade do carrinho & Médio & Manter a implementação atual enquanto não houver evidências de problemas de desempenho. \\
+\addlinespace
+Incompatibilidade entre componentes & Alto & Preservar os contratos existentes e coordenar alterações de interfaces entre os grupos. \\
+\addlinespace
+Introdução de ferramentas de análise estática & Baixo & Registrar os problemas existentes antes de estabelecer regras obrigatórias no CI. \\
+\addlinespace
+Reorganização dos pacotes & Médio & Analisar as dependências entre classes antes de realizar movimentações. \\
+\addlinespace
+Ampliação das regras de domínio & Médio & Implementar novas validações acompanhadas de testes específicos e documentação. \\
+\bottomrule
+\end{tabularx}
+\caption{Riscos e estratégias de mitigação para a evolução futura.}
+\end{table}
+
+A viabilidade das propostas depende principalmente da necessidade de evolução do sistema e do esforço necessário para preservar a compatibilidade. Para o contexto atual, as alterações realizadas pelo Grupo 2 são suficientes para melhorar a consistência do modelo sem exigir mudanças na plataforma tecnológica.
+
+\section{Andamento do plano}
+
+A tabela a seguir diferencia as ações efetivamente realizadas das propostas que permanecem como possibilidades de evolução.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{3.2cm}Y}
+\toprule
+\textbf{Fase} & \textbf{Situação} & \textbf{Registro} \\
+\midrule
+0 & Concluída & Foram implementadas validações em \code{Product} e \code{ProductQuantity}, além de testes específicos para os comportamentos válidos e inválidos. \\
+\addlinespace
+1 & Pendente & Não foi incorporada ferramenta específica de análise estática ao projeto durante o escopo do Grupo 2. \\
+\addlinespace
+2 & Pendente & O Maven Wrapper não foi adotado como parte das alterações realizadas pelo grupo. \\
+\addlinespace
+3 & Pendente & O tipo \code{double} foi preservado para manter a compatibilidade com os demais componentes. \\
+\addlinespace
+4 & Parcialmente atendida & Foram encapsuladas as regras de aceitação de quantidades em \code{ProductUnit}, sem introduzir novos tipos especializados. \\
+\addlinespace
+5 & Pendente & Não foi realizada uma padronização completa de Javadoc nas classes do grupo. \\
+\addlinespace
+6 & Pendente & As classes permaneceram no pacote original \code{dojo.supermarket.model}. \\
+\bottomrule
+\end{tabularx}
+\caption{Situação das propostas de evolução tecnológica do Grupo 2.}
+\end{table}
+
+Além das ações registradas, a implementação de \code{ShoppingCart} foi simplificada por meio da remoção do mapa persistente de quantidades. O método \code{productQuantities()} passou a calcular o resultado sob demanda, mantendo a interface utilizada pelos demais componentes.
+
+A suíte completa de testes do projeto foi executada por meio do comando:
+
+\begin{lstlisting}
+mvn -f java/pom.xml clean test
+\end{lstlisting}
+
+A execução foi concluída sem erros, indicando que as alterações realizadas preservaram os comportamentos cobertos pelos testes existentes e pelos novos testes adicionados.
+
+\section{Indicadores de sucesso}
+
+Os indicadores abaixo permitem avaliar as melhorias implementadas e orientar as próximas etapas de evolução.
+
+\begin{itemize}
+
+\item \textbf{Eliminação da duplicação de estado:} o carrinho passou a manter somente a lista de itens como estrutura persistente, enquanto o mapa de quantidades é construído sob demanda (\textbf{atingido}).
+
+\item \textbf{Validação dos dados de produto:} nomes inválidos e unidades nulas passaram a ser rejeitados durante a construção de \code{Product} (\textbf{atingido}).
+
+\item \textbf{Validação das quantidades:} produtos nulos, quantidades negativas, valores não finitos e quantidades fracionárias para unidades discretas passaram a ser rejeitados (\textbf{atingido}).
+
+\item \textbf{Encapsulamento das regras de unidade:} a compatibilidade entre quantidade e unidade passou a ser expressa por \code{ProductUnit.acceptsQuantity()} (\textbf{atingido}).
+
+\item \textbf{Preservação dos comportamentos existentes:} a execução da suíte completa de testes foi concluída sem erros (\textbf{atingido nos testes executados}).
+
+\item \textbf{Evolução da precisão decimal:} substituir \code{double} por \code{BigDecimal} permanece como proposta futura (\textbf{pendente}).
+
+\item \textbf{Melhoria da automação de qualidade:} a adoção de análise estática e de novas ferramentas de build permanece como proposta futura (\textbf{pendente}).
+
+\end{itemize}
+
+\begin{thebibliography}{9}\small
+
+\bibitem{feathers2013} FEATHERS, Michael. \textbf{Trabalho eficaz com código legado}. Porto Alegre: Bookman, 2013.
+
+\bibitem{gamma2000} GAMMA, Erich et al. \textbf{Padrões de projeto}: soluções reutilizáveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+
+\bibitem{fowler2020} FOWLER, Martin. \textbf{Refatoração}: aperfeiçoando o design de código existente. 2. ed. São Paulo: Novatec, 2020.
+
+\bibitem{sommerville2019} SOMMERVILLE, Ian. \textbf{Engenharia de software}. 10. ed. São Paulo: Pearson Education do Brasil, 2019.
+
+\bibitem{martin2011} MARTIN, Robert C. \textbf{Código limpo}: habilidades práticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+
+\end{thebibliography}
