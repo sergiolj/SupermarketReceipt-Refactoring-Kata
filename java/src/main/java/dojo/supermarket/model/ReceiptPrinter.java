@@ -36,12 +36,12 @@ public class ReceiptPrinter {
         String totalPricePresentation = presentPrice(item.totalPrice());
         String name = item.product().name();
 
-        String line = formatLineWithWhitespace(name, totalPricePresentation);
+        StringBuilder line = new StringBuilder(formatLineWithWhitespace(name, totalPricePresentation));
 
         if (item.quantity() != 1) {
-            line += "  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n";
+        	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
         }
-        return line;
+        return line.toString();
     }
 
     private String presentDiscount(Discount discount) {
