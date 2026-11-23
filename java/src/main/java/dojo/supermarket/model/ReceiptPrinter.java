@@ -39,14 +39,14 @@ public class ReceiptPrinter {
 
         StringBuilder line = new StringBuilder(formatLineLeftAndRightAlignment(name, totalPricePresentation));
 
-        if (hasMoreThanOneProduct(item)) {
+        if (hasQuantityLine(item)) {
         	line.append("  " + presentPrice(item.price()) + " * " + presentQuantity(item) + "\n");
         }
         return line.toString();
     }
     
-    private boolean hasMoreThanOneProduct(ReceiptItem item) {
-    	return item.quantity() > 1;
+    private boolean hasQuantityLine(ReceiptItem item) {
+    	return item.quantity() != 1;
     }
 
     private String presentDiscount(Discount discount) {

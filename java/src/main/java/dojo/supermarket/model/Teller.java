@@ -19,10 +19,6 @@ public class Teller {
         offers.add(product, strategy);
     }
 
-    /**
-     * Cadastra uma oferta de pacote: ao levar uma unidade de cada produto, há o percentual de desconto
-     * sobre o total do conjunto.
-     */
     public void addBundleOffer(List<Product> products, double percent) {
         offers.addBundle(new BundleOffer(products, percent));
     }

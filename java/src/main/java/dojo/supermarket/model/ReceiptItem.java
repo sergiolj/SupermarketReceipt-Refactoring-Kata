@@ -1,10 +1,10 @@
 package dojo.supermarket.model;
 
 
-public record ReceiptItem(Product product, double quantity, double price, double totalPrice) {
+public record ReceiptItem(Product product, double quantity, double price) {
 	
-	public ReceiptItem(Product product, double quantity, double price) {
-		this(product, quantity, price, quantity * price);
+	public double totalPrice() {
+		return this.price * quantity;
 	}
 	
 }

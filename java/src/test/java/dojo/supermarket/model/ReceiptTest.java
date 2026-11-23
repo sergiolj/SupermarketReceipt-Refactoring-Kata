@@ -18,7 +18,7 @@ class ReceiptTest {
         Receipt receipt = new Receipt();
         receipt.addProduct(rice, 2, 2.49);
         receipt.addProduct(rice, 1, 2.49);
-        // descontos são valores negativos
+
         receipt.addDiscount(new Discount(rice, "10.0% off", -0.747));
         assertEquals(6.723, receipt.getTotalPrice(), 0.0001);
     }
