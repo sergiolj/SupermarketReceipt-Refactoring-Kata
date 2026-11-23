@@ -27,6 +27,6 @@ public class Receipt {
     }
 
     public List<Discount> getDiscounts() {
-        return discounts;
+        return Collections.unmodifiableList(discounts);
     }
 }
