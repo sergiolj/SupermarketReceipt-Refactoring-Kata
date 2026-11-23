@@ -2,7 +2,7 @@ package dojo.supermarket.model;
 
 import java.util.stream.Collectors;
 
-public class ReceiptPrinter implements ReceiptFormatter{
+public class ReceiptPrinter implements ReceiptPrinterFormatter{
 
 	private static final int DEFAULT_COLUMNS_WIDTH = 40;
 	private static final String BLANK_LINE = "\n";
