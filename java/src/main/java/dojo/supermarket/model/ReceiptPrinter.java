@@ -4,10 +4,14 @@ import java.util.Locale;
 
 public class ReceiptPrinter {
 
+	private static final String TOTAL_LABEL = "Total: ";
+	private static final String PRICE_FORMAT ="%.2f";
+	private static final String WEIGHT_FORMAT = "%.3f";
+	private static final int DEFAULT_COLUMNS = 40;
     private final int columns;
 
     public ReceiptPrinter() {
-        this(40);
+        this(DEFAULT_COLUMNS);
     }
 
     public ReceiptPrinter(int columns) {
@@ -48,9 +52,8 @@ public class ReceiptPrinter {
     }
 
     private String presentTotal(Receipt receipt) {
-        String name = "Total: ";
         String value = presentPrice(receipt.getTotalPrice());
-        return formatLineWithWhitespace(name, value);
+        return formatLineWithWhitespace(TOTAL_LABEL, value);
     }
 
     private String formatLineWithWhitespace(String name, String value) {
@@ -64,12 +67,12 @@ public class ReceiptPrinter {
     }
 
     private static String presentPrice(double price) {
-        return String.format(Locale.UK, "%.2f", price);
+        return String.format(Locale.UK, PRICE_FORMAT, price);
     }
 
     private static String presentQuantity(ReceiptItem item) {
         return ProductUnit.EACH.equals(item.product().unit())
                 ? String.format("%d", (int)item.quantity())
-                : String.format(Locale.UK, "%.3f", item.quantity());
+                : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
     }
 }
