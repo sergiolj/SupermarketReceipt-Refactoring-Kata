@@ -26,14 +26,11 @@ class ReceiptPrinterTest {
     @Test   
     void printSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
     	Receipt receipt = new Receipt();
-    	//produto / quantidade / precounit / preco total
+
     	receipt.addProduct(apples, 2.50, 1.25);
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
-    	
-    	//produto / preco total
-    	//preco unit * quantidade
-    	//preco total
+
     	assertEquals("apples" + " ".repeat(30) + "3.13\n" 
     				+ "  " + "1.25" + " * " + "2.500\n"
     				+ "\n"
@@ -44,14 +41,11 @@ class ReceiptPrinterTest {
     @Test   
     void printLessThanOneKilo() {
     	Receipt receipt = new Receipt();
-    	//produto / quantidade / precounit / preco total
+    	
     	receipt.addProduct(apples, 0.50, 1.20);
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
-    	
-    	//produto / preco total
-    	//preco unit * quantidade
-    	//preco total
+
     	assertEquals("apples" + " ".repeat(30) + "0.60\n" 
     				+ "  " + "1.20" + " * " + "0.500\n"
     				+ "\n"
@@ -66,7 +60,6 @@ class ReceiptPrinterTest {
     	String outString = printer.printReceipt(receipt);
     	
     	assertEquals("apples" + " ".repeat(30) + "1.25\n" 
-    	//			+ "  " + "1.25" + " * " + "1.000\n"
     				+ "\n"
     				+ "Total: " + " ".repeat(29) + "1.25\n", outString);
     }
