@@ -11,7 +11,7 @@ class ReceiptPrinterTest {
 
     
     @Test   
-    void printSingleReceiptItemWithoutDiscountWithColumnArgument() {
+    void printsSingleReceiptItemWithoutDiscountWithColumnArgument() {
     	Receipt receipt = new Receipt();
     	receipt.addProduct(apples, 2.50, 1.25);
     	ReceiptPrinter printer = new ReceiptPrinter(20);
@@ -24,7 +24,20 @@ class ReceiptPrinterTest {
     }
     
     @Test   
-    void printSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
+    void printsProductDiscreteWithFractionQuantityBugInQuantityLine() {
+    	Receipt receipt = new Receipt();
+    	receipt.addProduct(toothbrush, 2.50, 0.99);
+    	ReceiptPrinter printer = new ReceiptPrinter(20);
+    	String outString = printer.printReceipt(receipt);
+    	
+    	assertEquals("toothbrush" + " ".repeat(6) + "2.48\n" 
+    				+ "  " + "0.99" + " * " + "2\n"
+    				+ "\n"
+    				+ "Total: " + " ".repeat(9) + "2.48\n", outString);
+    }
+    
+    @Test   
+    void printsSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
     	Receipt receipt = new Receipt();
 
     	receipt.addProduct(apples, 2.50, 1.25);
@@ -39,7 +52,7 @@ class ReceiptPrinterTest {
     
     
     @Test   
-    void printLessThanOneKilo() {
+    void printsLessThanOneKilo() {
     	Receipt receipt = new Receipt();
     	
     	receipt.addProduct(apples, 0.50, 1.20);
