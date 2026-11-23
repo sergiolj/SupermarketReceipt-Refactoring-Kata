@@ -37,6 +37,13 @@ class ReceiptTest {
         receipt.addProduct(rice, 1, 2.49);
         assertThrows(UnsupportedOperationException.class, () -> receipt.getItems().clear());
     }
+    
+    @Test
+    void discountsListIsUnmodifiable() {
+        Receipt receipt = new Receipt();
+        receipt.addDiscount(new Discount(rice, "10.0% off", -0.249));
+        assertThrows(UnsupportedOperationException.class, () -> receipt.getDiscounts().clear());
+    }
 
     @Test
     void discountsAreRecorded() {
