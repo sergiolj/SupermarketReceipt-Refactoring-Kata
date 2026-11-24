@@ -1,0 +1,329 @@
+\input{preambulo-unificado}
+\begin{document}
+\capa{Plano de Modularização e Melhorias de Legibilidade e Complexidade}{Etapa 3 -- Refatoração Prática e Evolução Aplicada}
+\tableofcontents\newpage
+
+\section{Introdução e escopo}
+
+Este plano reúne, em um único documento, a estratégia de modularização e de melhoria de legibilidade e complexidade aplicada às classes do \textit{SupermarketReceipt Refactoring Kata} pelos três grupos de trabalho: ofertas e caixa (Grupo 1: \code{Teller}, \code{Offer}, \code{SpecialOfferType} e a lógica de \code{handleOffers}), carrinho e quantidades (Grupo 2: \code{ShoppingCart}, \code{ProductQuantity}, \code{Product}, \code{ProductUnit}) e nota fiscal e impressão (Grupo 3: \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter} e o catálogo).
+
+O objetivo é reduzir a complexidade ciclomática, separar responsabilidades e tornar as regras mais explícitas, sem alterar o comportamento observável, seguindo o catálogo de refatorações de Fowler (2020) e as recomendações de Martin (2011). Antes de qualquer alteração, o comportamento atual foi registrado com testes de caracterização, inclusive os defeitos do legado (FEATHERS, 2013), e padrões de projeto foram aplicados onde havia seleção de comportamento por tipo (GAMMA \textit{et al}., 2000).
+
+O documento foi \textbf{atualizado após a execução} dos três grupos: os trechos de código da seção 4 correspondem ao estado atual da \code{main}, a seção 8 registra o que diverge dos planos originais e a seção 7 traz os resultados medidos. Cada item indica o grupo de origem.
+
+\section{Ponto de partida}
+
+O diagnóstico da Etapa 2 e a revisão com os testes de caracterização registraram os seguintes dados sobre o código original:
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\centering\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{4.7cm}Y}
+\toprule \textbf{Grupo} & \textbf{Indicador} & \textbf{Situação encontrada e achados} \\ \midrule
+1 & Complexidade de \code{handleOffers} & 13 (12 decisões); acima do limite usual de 10 (L-04). \\
+1 & Tipos de oferta testados no mesmo método & 6, com \code{THREE_FOR_TWO} e \code{FIVE_FOR_AMOUNT} testados duas vezes cada (L-07, L-19). \\
+1 & Dependências de \code{ShoppingCart} e de \code{Teller} & 7 tipos cada um (L-20). \\
+1 & Constantes 2, 3 e 5, nomes pouco expressivos e cadastro de ofertas no \code{Teller} & Repetidas como variável \code{x} e literais (L-21); \code{x}, \code{numberOfXs}, \code{quantityAsInt} (L-06, L-09, L-11); L-18. \\
+2 & Estado do carrinho & Duas estruturas (lista de adições e mapa de quantidades) atualizadas juntas em \code{addItemQuantity}, com risco de divergência. \\
+2 & Validação de \code{Product} e \code{ProductQuantity} & Inexistente: aceitavam nome vazio, unidade nula, quantidade negativa ou não finita. \\
+2 & \code{ProductUnit} & Atributo booleano sem operação que respondesse se uma quantidade é aceita. \\
+3 & Local do \code{ReceiptPrinter} & \code{src/test}: código de produção fora de \code{src/main} e da medição de cobertura (L-23), sem testes diretos. \\
+3 & \code{Receipt.addProduct} e \code{ReceiptItem} & 4 parâmetros; \code{ReceiptItem} guardava \code{totalPrice}, derivável de \code{quantity * price}, e tinha \textit{import} sem uso (L-16, L-17). \\
+3 & \code{Receipt.getDiscounts()} & Devolvia a lista interna mutável, ao contrário de \code{getItems()} (L-22). \\
+3 & \code{ReceiptPrinter} e catálogo & Três responsabilidades na classe (montar, alinhar, formatar); literais sem nome; \code{FakeCatalog} lançava \code{NullPointerException} para produto ausente (L-25). \\
+Todos & Dinheiro e quantidade & \code{double}, com arredondamento linha a linha na impressão e \textit{cast} para \code{int} nas regras (L-03, L-05). \\
+Todos & Rede de segurança & 1 teste efetivo na \textit{tag} \code{legado}. \\
+\bottomrule\end{tabularx}
+\caption{Indicadores de partida, por grupo.}\end{table}
+
+\section{Arquitetura-alvo}
+
+\subsection{Pacotes propostos}
+
+Os três planos originais convergiam para uma separação em pacotes por responsabilidade, com nomes ligeiramente diferentes. A proposta unificada abaixo reconcilia as três versões e define uma regra de dependência em um único sentido.
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{6.2cm}>{\centering\arraybackslash}p{1.2cm}Y}
+\toprule \textbf{Pacote} & \textbf{Classes} & \textbf{Grupo} & \textbf{Responsabilidade} \\ \midrule
+\code{model} & \code{Product}, \code{ProductUnit}, \code{Quantity}, \code{ProductQuantity}, \code{Money}, \code{Discount}, \code{SupermarketCatalog} & 2 e 3 & Dados e valores do domínio. \\
+\code{offer} & \code{OfferStrategy}, \code{PercentDiscountOffer}, \code{ThreeForTwoOffer}, \code{QuantityForAmountOffer}, \code{OfferStrategies}, \code{BundleOffer}, \code{SpecialOffers}, \code{SpecialOfferType} & 1 & Regras das promoções e seu cadastro. \\
+\code{checkout} & \code{Teller}, \code{ShoppingCart} & 1 e 2 & Fechamento da compra. \\
+\code{receipt} & \code{Receipt}, \code{ReceiptItem} & 3 & Dados da nota fiscal e regras do total. \\
+\code{printing} & \code{ReceiptPrinterFormatter}, \code{ReceiptPrinter}, \code{ReceiptPrinterHtml}, \code{ReceiptFormat} & 3 & Apresentação da nota em texto e em HTML. \\
+\bottomrule\end{tabularx}
+\caption{Pacotes-alvo (proposta, ainda não aplicada ao código).}\end{table}
+
+\noindent\textbf{Regra de dependência:} \code{printing} depende de \code{receipt}; \code{receipt} depende só de \code{model}; \code{offer} depende de \code{model} e de \code{receipt} (porque \code{SpecialOffers} registra descontos na nota); \code{checkout} depende de \code{offer}, \code{receipt} e \code{model}. Nenhum pacote depende de \code{checkout} ou de \code{printing}, o que evita ciclos. Duas consequências práticas: \code{SupermarketCatalog} e \code{Discount} ficam em \code{model}, porque são usados por vários pacotes, e métodos hoje visíveis só dentro do pacote (\code{SpecialOffers.applyTo}, \code{ShoppingCart.getItems} e \code{productQuantities}) precisarão se tornar públicos quando as classes forem separadas.
+
+\subsection{Responsabilidades por componente}
+
+\begin{itemize}
+\item \textbf{Ofertas (Grupo 1):} \code{OfferStrategy} define o contrato de uma promoção para um produto; cada implementação concentra uma regra; \code{OfferStrategies} converte \code{SpecialOfferType} em estratégia, preservando a API pública do \code{Teller}; \code{SpecialOffers} guarda as ofertas e as aplica ao carrinho; \code{BundleOffer} trata ofertas que olham vários produtos.
+\item \textbf{Carrinho e produto (Grupo 2):} \code{ShoppingCart} guarda os itens adicionados e calcula as quantidades agregadas sob demanda; \code{Product} e \code{ProductQuantity} validam seus dados na criação; \code{ProductUnit.acceptsQuantity} concentra a regra de unidade discreta; \code{Quantity} representa a quantidade com precisão decimal.
+\item \textbf{Nota e impressão (Grupo 3):} \code{Receipt} guarda itens e descontos, calcula o total e expõe as duas listas apenas como visões imutáveis; \code{ReceiptItem} calcula o total do item e responde sobre si mesmo; \code{ReceiptFormat} concentra a formatação de preço e quantidade; \code{ReceiptPrinterFormatter} é o contrato de qualquer formato de saída.
+\end{itemize}
+
+\textbf{Decisões de projeto:} \code{OfferStrategy} trabalha com um produto por vez, e o pacote é um tipo à parte; o record anêmico \code{Offer} foi removido, porque o mapa em \code{SpecialOffers} cumpre seu papel; e \code{Discount} permanece em \code{model}, porque é criado pelas ofertas e aparece em classes dos três grupos.
+
+\section{Antes e depois}
+
+\subsection{Regra de oferta (Grupo 1)}
+Antes: a regra do leve 3 e pague 2 ficava no meio de uma cadeia condicional em \code{ShoppingCart.handleOffers}.
+\begin{lstlisting}
+int x = 1;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO) {
+    x = 3;
+} else if (offer.offerType() == SpecialOfferType.TWO_FOR_AMOUNT) {
+    x = 2;
+    if (quantityAsInt >= 2) { /* ... */ }
+} if (offer.offerType() == SpecialOfferType.FIVE_FOR_AMOUNT) {
+    x = 5;
+}
+int numberOfXs = quantityAsInt / x;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO && quantityAsInt > 2) {
+    double discountAmount = quantity * unitPrice
+        - ((numberOfXs * 2 * unitPrice) + quantityAsInt % 3 * unitPrice);
+    discount = new Discount(p, "3 for 2", -discountAmount);
+}
+\end{lstlisting}
+Depois: cada oferta em sua classe, com constantes nomeadas e os tipos \code{Quantity} e \code{Money}.
+\begin{lstlisting}
+public Optional<Discount> discountFor(Product product, Quantity quantity, Money unitPrice) {
+    int units = quantity.wholeUnits();
+    if (units < GROUP_SIZE) {
+        return Optional.empty();
+    }
+    int completeGroups = units / GROUP_SIZE;
+    Money fullPrice = unitPrice.times(quantity);
+    Money payable = unitPrice.times(completeGroups * PAID_PER_GROUP + units % GROUP_SIZE);
+    return Optional.of(new Discount(product, "3 for 2", payable.minus(fullPrice)));
+}
+\end{lstlisting}
+
+\subsection{Estado do carrinho (Grupo 2)}
+Antes: duas estruturas que precisavam ser atualizadas juntas.
+\begin{lstlisting}
+private final List<ProductQuantity> items = new ArrayList<>();
+private final Map<Product, Double> productQuantities = new HashMap<>();
+
+public void addItemQuantity(Product product, double quantity) {
+    items.add(new ProductQuantity(product, quantity));
+    if (productQuantities.containsKey(product)) {
+        productQuantities.put(product, productQuantities.get(product) + quantity);
+    } else {
+        productQuantities.put(product, quantity);
+    }
+}
+\end{lstlisting}
+Depois: a lista é a fonte única, e o mapa é uma consulta derivada (\textit{Replace Derived Variable with Query}).
+\begin{lstlisting}
+private final List<ProductQuantity> items = new ArrayList<>();
+
+Map<Product, Quantity> productQuantities() {
+    Map<Product, Quantity> quantities = new HashMap<>();
+    for (ProductQuantity item : items) {
+        quantities.merge(item.product(), item.quantity(), Quantity::plus);
+    }
+    return Collections.unmodifiableMap(quantities);
+}
+\end{lstlisting}
+
+\subsection{Validação e regra de unidade (Grupo 2)}
+Antes, \code{ProductQuantity} era um \textit{record} sem nenhuma regra. Depois, a criação de um objeto inválido falha, e a regra de unidade fica em \code{ProductUnit}.
+\begin{lstlisting}
+public record ProductQuantity(Product product, Quantity quantity) {
+    public ProductQuantity {
+        if (product == null) {
+            throw new IllegalArgumentException("Product cannot be null");
+        }
+        if (quantity == null) {
+            throw new IllegalArgumentException("Quantity cannot be null");
+        }
+        if (!product.unit().acceptsQuantity(quantity)) {
+            throw new IllegalArgumentException("Quantity must be an integer for discrete units");
+        }
+    }
+}
+
+public boolean acceptsQuantity(Quantity quantity) {
+    return !discrete || quantity.isWholeNumber();
+}
+\end{lstlisting}
+
+\subsection{Montagem da nota (Grupo 3)}
+Antes (em \code{src/test}): laços e variáveis temporárias misturados com a montagem do texto.
+\begin{lstlisting}
+StringBuilder result = new StringBuilder();
+for (ReceiptItem item : receipt.getItems()) {
+    String receiptItem = presentReceiptItem(item);
+    result.append(receiptItem);
+}
+for (Discount discount : receipt.getDiscounts()) {
+    String discountPresentation = presentDiscount(discount);
+    result.append(discountPresentation);
+}
+result.append("\n");
+result.append(presentTotal(receipt));
+return result.toString();
+\end{lstlisting}
+Depois (em \code{src/main}): o método principal lê como a estrutura da nota.
+\begin{lstlisting}
+@Override
+public String printReceipt(Receipt receipt) {
+    return presentItems(receipt)
+            + presentDiscounts(receipt)
+            + BLANK_LINE
+            + presentTotal(receipt);
+}
+\end{lstlisting}
+
+\subsection{Item da nota, formatação e descontos (Grupo 3)}
+\begin{lstlisting}
+// Antes
+public record ReceiptItem(Product product, double quantity, double price,
+                          double totalPrice) { }
+public void addProduct(Product p, double quantity, double price, double totalPrice) { ... }
+public List<Discount> getDiscounts() { return discounts; }
+
+// Depois
+public record ReceiptItem(Product product, Quantity quantity, Money price) {
+    public Money totalPrice() { return this.price.times(quantity); }
+    public boolean hasSingleQuantity() { return quantity.isOne(); }
+    public boolean isProductDiscrete() { return this.product.unit().isDiscrete(); }
+}
+public void addProduct(Product p, Quantity quantity, Money price) { ... }
+public List<Discount> getDiscounts() { return Collections.unmodifiableList(discounts); }
+\end{lstlisting}
+\begin{lstlisting}
+// Antes: metodo privado do ReceiptPrinter, com literais
+private static String presentQuantity(ReceiptItem item) {
+    return ProductUnit.EACH.equals(item.product().unit())
+            ? String.format("%d", (int)item.quantity())
+            : String.format(Locale.UK, "%.3f", item.quantity());
+}
+
+// Depois: classe ReceiptFormat, com constantes
+public static String quantity(ReceiptItem item) {
+    return item.isProductDiscrete()
+            ? String.format(DISCRETE_UNIT_FORMAT, item.quantity().wholeUnits())
+            : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity().value());
+}
+\end{lstlisting}
+
+\subsection{Tipos de valor (transversal)}
+Antes, o dinheiro e a quantidade eram \code{double} em todo o domínio, o que gerava erros de arredondamento binário (0,1 mais 0,2 não resulta exatamente em 0,3). Depois, \code{Money} (duas casas, \textit{half-up}) e \code{Quantity} (três casas) tornam a soma exata e concentram as regras de arredondamento e do \textit{cast} para \code{int} (\code{wholeUnits()}).
+
+\section{Sequência de refatorações}
+
+Cada passo foi um \textit{commit} pequeno, com a suíte verde antes e depois, no estilo de evolução gradual de código legado (FEATHERS, 2013).
+
+\subsection{Grupo 1: ofertas}
+\begin{enumerate}
+\item Interface \code{OfferStrategy} e \code{PercentDiscountOffer} (\code{e281d76}).
+\item \code{ThreeForTwoOffer} e \code{QuantityForAmountOffer} (\code{b339e07}, \code{85e77fc}).
+\item Fábrica \code{OfferStrategies} (\code{856131a}).
+\item \code{SpecialOffers} extraído do \code{Teller} e \code{Teller} delegando a ele (\code{67f0f48}, \code{d9e8c66}), resolvendo L-18 e L-20.
+\item Remoção de \code{handleOffers} e do record \code{Offer} (\code{526cae2}).
+\item Teste com \textit{lambda} que prova a extensibilidade (\code{1e32c45}).
+\item Oferta de pacote (\code{5c173f4}, \code{0eb12b5}, \code{abf6d57}) e JaCoCo (\code{374d616}).
+\end{enumerate}
+
+\subsection{Grupo 2: carrinho e quantidades}
+\begin{enumerate}
+\item \textit{Replace Derived Variable with Query}: remoção do mapa persistente do carrinho (\code{11ab6fe}).
+\item Preservação da imutabilidade dos resultados de \code{getItems()} e \code{productQuantities()}.
+\item Validações nos construtores de \code{Product} e \code{ProductQuantity} e regra \code{acceptsQuantity} em \code{ProductUnit} (\code{4f6da97}).
+\item Testes unitários das validações e das unidades (\code{d1e58c3}).
+\item Tipo \code{Quantity}, com \code{wholeUnits()} (\code{832c9b9}, \code{789d5ae}).
+\end{enumerate}
+
+\subsection{Grupo 3: nota fiscal e impressão}
+\begin{enumerate}
+\item Testes de caracterização do printer antes de qualquer mudança (\code{6df4392}, \code{5c8abf6}, \code{ae7cdbc}).
+\item Mover o \code{ReceiptPrinter} de \code{src/test} para \code{src/main} (\code{8a73523}), resolvendo L-23.
+\item \textit{Inline Variable} em \code{printReceipt} (\code{f388a85}) e \textit{Replace Magic Literal} com constantes (\code{2be4b82}, \code{8357b04}).
+\item Padronizar a construção de texto com \code{StringBuilder} (\code{d7621e2}).
+\item \textit{Decompose Conditional} na condição da linha de quantidade (\code{87bf455}, corrigido em \code{c87c217}; ver seção 8).
+\item \code{ProductUnit.isDiscrete()} no printer e renomeação do método de alinhamento (\code{f47f832}).
+\item \textit{Replace Derived Variable with Query}: \code{totalPrice} calculado e \code{addProduct} com um parâmetro a menos (\code{ea052bf}, \code{5b7296e}), resolvendo L-16 e L-17.
+\item \textit{Encapsulate Collection} em \code{getDiscounts()} (\code{81b2dbb}), resolvendo L-22.
+\item \textit{Move Function} e \textit{Hide Delegate} (\code{0630a9c}, \code{0885804}).
+\item \textit{Extract Class} para \code{ReceiptFormat} (\code{e92fd0e}) e \textit{Extract Function} com \textit{Replace Loop with Pipeline} em \code{printReceipt} (\code{f6770c6}, \code{9808b0c}).
+\item Interface \code{ReceiptPrinterFormatter} (\code{8a005fd}) e formato HTML (\code{f6356ad}, implementado depois, no PR 33).
+\end{enumerate}
+
+\subsection{Pendente nos três grupos}
+Dividir o código nos pacotes da seção 3, renomear o argumento ignorado do ``3 por 2'' (L-24) e devolver \code{ReceiptFormat.total()} ao printer.
+
+\section{Melhorias de legibilidade}
+
+\begin{itemize}
+\item \textbf{Regras em classes próprias:} cada oferta é uma classe pequena, e o método principal do printer passou a ser um sumário (itens, descontos, linha em branco, total) (MARTIN, 2011).
+\item \textbf{Nomes e constantes:} eliminação de \code{x} e \code{numberOfXs} em favor de \code{GROUP_SIZE} e \code{completeGroups}; constantes no lugar de literais de formato e de largura; \code{formatLineWithWhitespace} passou a \code{formatLineLeftAndRightAlignment}.
+\item \textbf{Fonte única de dados e validação próxima dos dados:} o carrinho guarda só a lista; construtores impedem objetos inválidos.
+\item \textbf{Condições com nome de intenção:} \code{hasSingleQuantity()} no lugar de comparações soltas.
+\item \textbf{Encapsulamento:} regra de unidade em \code{ProductUnit}, listas imutáveis na nota, formatação em \code{ReceiptFormat}.
+\item \textbf{Testes orientados ao comportamento:} nomeados pelo que verificam, com valores esperados literais; comentários desatualizados e código comentado removidos.
+\item \textbf{Documentação:} Javadoc nas classes novas de ofertas, valores e HTML (10 de 23 classes de produção).
+\end{itemize}
+
+\section{Resultados medidos}
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{4.1cm}>{\centering\arraybackslash}p{1.3cm}}
+\toprule \textbf{Indicador} & \textbf{Antes} & \textbf{Depois} & \textbf{Grupo} \\ \midrule
+Maior complexidade ciclomática nas ofertas & 13 (\code{handleOffers}) & 4 (\code{OfferStrategies.from}) & 1 \\
+Cadeias condicionais com regra de oferta & 1 & 0 & 1 \\
+Estruturas que guardam o carrinho & 2 (lista e mapa) & 1 (lista) & 2 \\
+Dependências de \code{ShoppingCart} & 7 tipos & 3 tipos & 1 e 2 \\
+Dependências de \code{Teller} & 7 tipos & 12 tipos (\textbf{piorou}) & 1 \\
+Validações nos construtores de produto e quantidade & nenhuma & \code{Product}, \code{ProductQuantity}, \code{Quantity} & 2 \\
+Dinheiro e quantidade & \code{double} & \code{Money} e \code{Quantity} & todos \\
+\code{ReceiptPrinter} & \code{src/test}, sem testes & \code{src/main}, 11 testes, 100\% das linhas & 3 \\
+Parâmetros de \code{Receipt.addProduct} & 4 & 3 & 3 \\
+Coleções mutáveis expostas por \code{Receipt} & 1 & 0 & 3 \\
+Maior complexidade no printer (contagem do Grupo 3) & 3 & 2 & 3 \\
+Testes automatizados & 1 (\textit{tag} \code{legado}) & 124, todos passando & todos \\
+Cobertura de linhas e de \textit{branches} & 98,9\% e 100\% (com 37 testes, antes de refatorar) & 100\% e 100\% & todos \\
+Classes de produção com Javadoc & 0 & 10 de 23 & todos \\
+Funcionalidades novas & -- & oferta de pacote e formato HTML & 1 e 3 \\
+\bottomrule\end{tabularx}
+\caption{Resultados da refatoração (contagens manuais e relatório do JaCoCo).}\end{table}
+
+O resultado negativo merece registro: as dependências do \code{Teller} aumentaram de 7 para 12 tipos, porque ele passou a delegar por \code{SpecialOffers}, \code{OfferStrategies} e \code{OfferStrategy} e a usar \code{BundleOffer}, \code{Money} e \code{Quantity}. A responsabilidade da classe diminuiu, mas a contagem de tipos que ela conhece cresceu; reduzi-la depende da divisão em pacotes.
+
+\section{Decisões e divergências em relação aos planos}
+
+\begin{itemize}
+\item \textbf{Pacotes adiados.} Os três planos previram a divisão em pacotes, mas nenhum a executou: mover as estratégias para outro pacote enquanto \code{Teller} e \code{Discount} compartilham o pacote original criaria dependência circular. A proposta unificada da seção 3 resolve o problema com a regra de dependência em um sentido, e a mudança deve ser feita em um único \textit{commit}, quando não houver \textit{branches} abertos nas mesmas classes.
+\item \textbf{Tipo numérico: de preservado a adotado.} O Grupo 2 havia preservado \code{double} para manter a compatibilidade e o Grupo 3 o registrava como pendência conjunta. A troca foi feita pelos três em conjunto, e de forma atômica: \code{Money} e, depois, \code{Quantity}.
+\item \textbf{Defeito introduzido e corrigido (Grupo 3).} Ao nomear a condição da linha de quantidade, \code{item.quantity() != 1} foi trocada por \code{item.quantity() > 1}, e quantidades menores que 1 (por exemplo, 0,5 kg) deixaram de imprimir a linha. A suíte continuou verde porque nenhum teste usava quantidade abaixo de 1. O defeito foi encontrado na revisão, o teste \code{printsLessThanOneKilo} o reproduziu e a condição original foi restaurada. Uma suíte verde só protege o que ela cobre.
+\item \textbf{Mudanças de comportamento intencionais.} (i) Total do item derivado (Grupo 3): três testes que informavam totais incoerentes com quantidade e preço tiveram o valor esperado corrigido. (ii) Arredondamento ao centavo (\code{Money}): 10\% de uma escova de 0,99 passou de 0,099 para 0,10, e as descrições mostram duas casas (``2 for 1.50''). (iii) Validação na criação (Grupo 2): objetos inválidos falham com \code{IllegalArgumentException}.
+\item \textbf{Decisões do Grupo 2.} A agregação sob demanda troca simplicidade por custo proporcional ao número de itens; a quantidade zero foi mantida como válida; produtos por unidade exigem quantidades inteiras.
+\item \textbf{Formato HTML.} O plano do Grupo 3 registrava \code{ReceiptPrinterHtml} como esqueleto que devolvia \code{null}; ele foi implementado depois, com escape de caracteres especiais e testes.
+\end{itemize}
+
+\section{Riscos e dependências entre grupos}
+
+\begin{itemize}
+\item \textbf{Remoção de \code{handleOffers} (Grupo 1 sobre o Grupo 2):} a única mudança em \code{ShoppingCart} feita pelo Grupo 1. Mitigação: aviso ao grupo e \textit{pull request} pequeno.
+\item \textbf{Consumidores do carrinho:} as ofertas usam \code{productQuantities()} e a nota usa \code{getItems()}. As interfaces foram mantidas, e a ordem das adições, preservada.
+\item \textbf{Assinatura de \code{addProduct} (Grupo 3 sobre o Grupo 1):} a mudança de quatro para três parâmetros alterou a chamada no \code{Teller}, tratada com aviso e \textit{pull request} pequeno.
+\item \textbf{\code{ProductUnit} e \code{isDiscrete()}:} o \code{ReceiptItem} usa esse método sem alterá-lo (\textit{Hide Delegate}). Qualquer mudança no tipo de quantidade deve preservá-lo.
+\item \textbf{Tipos \code{Money} e \code{Quantity}:} afetaram arquivos dos três grupos. Mitigação: mudança atômica, com todos os testes atualizados.
+\item \textbf{Mudança de pacotes:} afeta classes e testes dos três grupos; deve ser um único \textit{commit} sem alteração de comportamento.
+\item \textbf{\code{FakeCatalog} compartilhado:} usado por quase todos os testes. Mudar a exceção de produto ausente (L-25) exige revisar os testes que dependem dela.
+\item \textbf{Custo da agregação sob demanda e regressões:} manter a abordagem enquanto não houver evidência de problema de desempenho, e manter a suíte completa no CI.
+\end{itemize}
+
+\newpage
+\section*{REFERÊNCIAS}
+\addcontentsline{toc}{section}{REFERÊNCIAS}
+\begin{singlespace}\raggedright\noindent
+FEATHERS, Michael. \textbf{Trabalho eficaz com código legado}. Porto Alegre: Bookman, 2013.
+
+\vspace{12pt}\noindent FOWLER, Martin. \textbf{Refatoração}: aperfeiçoando o design de código existente. 2. ed. São Paulo: Novatec, 2020.
+
+\vspace{12pt}\noindent GAMMA, Erich \textit{et al}. \textbf{Padrões de projeto}: soluções reutilizáveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+
+\vspace{12pt}\noindent MARTIN, Robert C. \textbf{Código limpo}: habilidades práticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+\end{singlespace}
+\end{document}
