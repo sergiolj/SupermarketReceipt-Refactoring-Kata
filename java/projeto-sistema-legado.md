@@ -12,6 +12,7 @@
 | ------------------- | --------- | ------------------------- | -------------- |
 | Sérgio Lopes Júnior | 200026817 | sergio.lopes@ucsal.edu.br | sergiolj       |
 | Manuel Bahamonde Boulhosa Neto | 200031998 | manuelbahamonde.neto@ucsal.edu.br | noclick11 |
+| Juvenal Rosa Alves Costa Junior | 200033214 | _[preencher e-mail institucional]_ | JJNEX |
 
 #### Origem do Sistema Legado
 
