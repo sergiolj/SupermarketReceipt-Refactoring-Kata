@@ -338,7 +338,7 @@ Um único método concentra a complexidade do sistema. Cada nova oferta (como o 
 - **Quantidade:** um único `double` representa unidades e peso, com *cast* para `int` dentro das regras (L-05).
 - **Encapsulamento:** classes anêmicas e coleção mutável exposta (L-13, L-22).
 - **Estrutura:** pacote único e classe de apresentação em `src/test` (L-23).
-- **Rede de segurança:** o legado começou com um único teste efetivo; agora há 37 testes (6 originais e 31 de caracterização) cobrindo os quatro tipos de oferta, o carrinho, a nota e a impressão. Esse conjunto reduz o risco da refatoração (FEATHERS, 2013), embora a cobertura percentual ainda não tenha sido medida.
+- **Rede de segurança:** o legado começou com um único teste efetivo; agora há 37 testes (6 já existentes no repositório e 31 de caracterização) cobrindo os quatro tipos de oferta, o carrinho, a nota e a impressão. Esse conjunto reduz o risco da refatoração (FEATHERS, 2013), embora a cobertura percentual ainda não tenha sido medida.
 
 #### Síntese e priorização
 
@@ -472,7 +472,7 @@ teller.addSpecialOffer(rice, oneOffFromTwoUnits);
 | Cadeias condicionais com regra de oferta | 1 | 0 |
 | Dependências de `ShoppingCart` | 7 | 3 (eram 2 após a refatoração de ofertas; `Quantity` entrou no PR #34) |
 | Dependências de `Teller` | 7 | 12 (**piorou**: delega por `SpecialOffers`, `OfferStrategies` e `OfferStrategy`, e passou a usar `BundleOffer`, `Money` e `Quantity`; a responsabilidade diminuiu, mas a contagem de tipos aumentou) |
-| Testes (projeto inteiro) | 6 | 110 |
+| Testes (projeto inteiro) | 1 (na tag `legado`) | 110 |
 | Cobertura de linhas / branches | 98,9% / 100% (linha de base) | 99,0% / 100% |
 
 #### Mudança de comportamento intencional
