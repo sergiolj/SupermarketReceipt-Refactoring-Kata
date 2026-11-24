@@ -594,7 +594,7 @@ Depois: `int units = quantity.wholeUnits();` e `Quantity.of(0.1).plus(Quantity.o
 | Indicador | Antes | Depois |
 | --------- | ----- | ------ |
 | Estruturas que guardam o conteúdo do carrinho | 2 (lista e mapa) | 1 (lista) |
-| Validações de `Product` e `ProductQuantity` | 0 | 8 regras, todas testadas |
+| Validações de `Product`, `ProductQuantity` e `Quantity` | 0 | Presentes em todos os construtores, todas testadas |
 | Tipo da quantidade | `double` | `Quantity` (decimal exato) |
 | Dependências de `ShoppingCart` | 7 | 3 (`Product`, `ProductQuantity`, `Quantity`) |
 
