@@ -1,0 +1,149 @@
+\input{preambulo-unificado}
+\begin{document}
+\capa{Plano de Atualização Tecnológica e Estratégias para Evolução Futura}{Etapa 3 -- Refatoração Prática e Evolução Aplicada}
+\tableofcontents\newpage
+
+\section{Introdução e escopo}
+
+Este documento reúne, em um único plano, as propostas de atualização tecnológica e as estratégias de evolução futura do sistema legado \textit{SupermarketReceipt Refactoring Kata}, na versão Java. O sistema simula um caixa de supermercado: recebe os produtos de um carrinho, aplica promoções semanais e emite uma nota fiscal. O diagnóstico que fundamenta o plano está no Relatório de Débito Técnico da Etapa 2.
+
+A divisão do trabalho da Etapa 3 atribuiu a cada integrante um conjunto de classes, e cada conjunto gerou seu próprio plano, aqui consolidados:
+\begin{itemize}
+\item \textbf{Grupo 1} (Manuel Bahamonde Boulhosa Neto): \code{Teller}, \code{Offer} e \code{SpecialOfferType}, com o desafio de substituir a cadeia condicional de promoções por polimorfismo;
+\item \textbf{Grupo 2} (Juvenal Rosa Alves Costa Junior): \code{ShoppingCart}, \code{ProductQuantity}, \code{Product} e \code{ProductUnit}, com os desafios do estado duplicado do carrinho e da quantidade em \code{double};
+\item \textbf{Grupo 3} (Sérgio Lopes Júnior): \code{Receipt}, \code{ReceiptItem}, \code{Discount}, \code{ReceiptPrinter} e o catálogo, com os desafios da impressão sem testes, da lista de descontos mutável e da lista longa de parâmetros.
+\end{itemize}
+
+O texto distingue o que foi \textbf{efetivamente implementado} do que permanece como \textbf{proposta futura}. A situação descrita corresponde ao estado da \code{main} em 23 de novembro de 2026, já com as mudanças feitas em conjunto pelos três grupos. Cada fase e estratégia indica entre parênteses o grupo de origem.
+
+\section{Situação tecnológica atual}
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}Y}
+\toprule \textbf{Aspecto} & \textbf{Situação observada no repositório} \\ \midrule
+Linguagem & Java 17 (\code{maven.compiler.release} = 17), com \textit{records}, \textit{enums} e \textit{switch expressions}. \\
+Build e dependências & Maven; JUnit Jupiter 5.11.4; JaCoCo 0.8.14; ApprovalTests 28.0.0 declarado no \code{pom.xml}, mas sem uso nos testes; versões dos \textit{plugins} de compilação (3.13.0) e de testes (3.5.2) fixadas. \\
+Integração contínua & GitHub Actions executa \code{mvn test} com JDK 17 a cada \textit{push} e \textit{pull request} na \code{main}, que só recebe alterações por \textit{pull request}. O fluxo foi alterado de JDK 21 para JDK 17 no início do trabalho. \\
+Testes e cobertura & 124 testes, todos passando; cobertura medida com JaCoCo de 100\% das linhas (243 de 243) e dos \textit{branches} (66 de 66). \\
+Análise estática & Inexistente (sem Checkstyle, PMD ou SonarQube no \textit{build}). \\
+Documentação & Javadoc em 10 das 23 classes de produção; nenhum documento de arquitetura além do relatório do projeto. \\
+Dinheiro & Tipo \code{Money} (\code{BigDecimal}, duas casas, arredondamento \textit{half-up}) em catálogo, ofertas, descontos, itens e total. \\
+Quantidade & Tipo \code{Quantity} (decimal exato, três casas, não negativo); a entrada por \code{double} permanece como conveniência em \code{ShoppingCart.addItemQuantity}. \\
+Ofertas & Interface \code{OfferStrategy} com três implementações, \code{BundleOffer} para pacotes e \code{SpecialOffers} como cadastro. \\
+Carrinho & A lista de itens é a única estrutura persistente; as quantidades agregadas são calculadas sob demanda. \\
+Saída da nota & Interface \code{ReceiptPrinterFormatter}, com saída em texto (\code{ReceiptPrinter}) e em HTML (\code{ReceiptPrinterHtml}); formatação com \code{Locale.UK} fixo e sem símbolo de moeda. \\
+Catálogo & Apenas a interface \code{SupermarketCatalog} e o \code{FakeCatalog} dos testes, que usa o nome do produto como chave e lança \code{NullPointerException} para produto ausente (L-25). \\
+Estrutura de pacotes & Um único pacote, \code{dojo.supermarket.model}. \\
+\bottomrule\end{tabularx}
+\caption{Estado tecnológico do sistema ao final da Etapa 3.}\end{table}
+
+O problema mais concreto do código legado era o arredondamento do dinheiro em \code{double}. Uma nota com um item de 1,00 e um desconto de $-0{,}995$ era impressa pelo código original assim:
+\begin{lstlisting}[language={}]
+toothbrush      1.00
+x(toothbrush)  -1.00
+
+Total:          0.01
+\end{lstlisting}
+As linhas somam 0,00, mas o total impresso era 0,01, porque cada linha era arredondada separadamente a partir de um \code{double}. Com o tipo \code{Money}, o mesmo caso passou a imprimir \code{Total: 0.00}, resultado verificado executando o código atual. Em uma nota fiscal real, essa divergência não seria aceitável.
+
+\section{Plano de atualização tecnológica}
+
+As propostas foram organizadas em fases curtas e independentes, e cada fase termina com todos os testes passando no CI, conforme a recomendação de cobrir o código legado com testes de regressão antes de alterá-lo (FEATHERS, 2013). A coluna final registra a situação ao fim da Etapa 3.
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.9cm}>{\raggedright\arraybackslash}p{4.5cm}>{\centering\arraybackslash}p{1.1cm}Y}
+\toprule \textbf{Fase} & \textbf{Ação} & \textbf{Grupo} & \textbf{Situação e registro} \\ \midrule
+0 & Medir a cobertura com JaCoCo e publicar o relatório no \textit{build}. & 1 e 3 & \textbf{Concluída.} Linha de base (com 37 testes): 98,9\% das linhas e 100\% dos \textit{branches}. Final: 100\% e 100\%; o \code{ReceiptPrinter}, antes em \code{src/test} e sem medição, tem 34 de 34 linhas. \\
+1 & Adotar análise estática (Checkstyle ou PMD) e manter o Dependabot. & 1 e 2 & Pendente. \\
+2 & Adotar o \textit{Maven Wrapper} e padronizar o JDK. & 1 e 2 & Pendente. \\
+3 & Usar recursos do Java 17 (\textit{records}, \textit{switch expressions}); avaliar interface \textit{sealed} e o Java 21. & 1 & \textbf{Parcial.} \textit{Records} e \textit{switch expressions} em uso. A interface \textit{sealed} \textbf{não} foi usada: um conjunto fechado de ofertas contradiz o objetivo de extensibilidade (seção 4.1). Java 21 não avaliado. \\
+4 & Consolidar as validações de produto, quantidade e unidade. & 2 & \textbf{Concluída.} Validação nos construtores de \code{Product} e \code{ProductQuantity} e regra de aceitação em \code{ProductUnit}, com testes. \\
+5 & Introduzir o tipo \code{Money} (\code{BigDecimal}) em catálogo, ofertas, descontos, itens e total. & 1, 2 e 3 & \textbf{Concluída} (PR 30). Troca única nos três grupos; os testes deixaram de usar tolerância. \\
+6 & Evoluir o modelo de quantidades com um objeto de valor. & 2 & \textbf{Concluída} (PR 34). Tipo \code{Quantity}, com \code{wholeUnits()} concentrando o \textit{cast} para \code{int}. \\
+7 & Reescrever os testes do printer com \textit{text blocks} e criar um \textit{golden master} da nota com ApprovalTests. & 3 & Pendente. \\
+8 & Tornar a formatação localizável (\code{NumberFormat} com \code{Locale} configurável). & 3 & \textbf{Preparada.} A formatação já está concentrada em \code{ReceiptFormat}; falta tornar o \code{Locale} configurável. \\
+9 & Implementar o \code{ReceiptPrinterHtml}, com escape de caracteres especiais. & 3 & \textbf{Concluída} (PR 33), com testes, inclusive de nome de produto com HTML. \\
+10 & Substituir a \code{NullPointerException} do catálogo por exceção de domínio (L-25). & 3 & Pendente. \\
+11 & Documentar com Javadoc as classes públicas. & 1, 2 e 3 & \textbf{Parcial.} 10 de 23 classes de produção. \\
+12 & Reorganizar o código em pacotes (\code{model}, \code{offer}, \code{checkout}, \code{receipt}, \code{printing}). & 1, 2 e 3 & Pendente (ver o plano de modularização). \\
+\bottomrule\end{tabularx}
+\caption{Fases consolidadas da atualização tecnológica.}\end{table}
+
+As fases 1, 2 e 11 têm baixo impacto estrutural. As fases 5 e 6, que alteravam contratos usados pelos três grupos, foram feitas em conjunto e de forma atômica, com os testes atualizados no mesmo \textit{commit}. A fase 12 continua dependendo de coordenação entre os grupos.
+
+\section{Estratégias para evolução futura}
+
+\subsection{Ofertas extensíveis e oferta de pacote (Grupo 1)}
+Antes da refatoração, criar um tipo de oferta exigia alterar o \textit{enum} e editar o método \code{handleOffers}. Com cada oferta em uma estratégia própria, um novo tipo é uma nova classe ou uma expressão \textit{lambda}, sem alterar as existentes (GAMMA \textit{et al}., 2000). Isso foi demonstrado em teste. A oferta de pacote (\textit{bundle}), prevista no enunciado do \textit{kata}, foi implementada em \code{BundleOffer}, como tipo à parte, porque envolve vários produtos enquanto a estratégia trabalha com um produto por vez.
+
+\subsection{Cadastro de ofertas separado do caixa e configuração externa (Grupo 1)}
+O cadastro de ofertas saiu do \code{Teller} para \code{SpecialOffers}, compartilhável entre caixas. Como as promoções mudam toda semana, a evolução natural é carregá-las de uma fonte externa (arquivo JSON ou YAML), com período de validade, para evitar recompilar o sistema a cada semana, e, depois, migrar essa fonte para um banco relacional. O valor das ofertas ainda entra pela API pública como \code{double}, e deve passar a ser \code{Money}.
+
+\subsection{Dinheiro e quantidade como tipos do domínio (Grupos 1, 2 e 3)}
+\code{Money} e \code{Quantity} foram introduzidos uma única vez, em conjunto, porque atravessam carrinho, ofertas, nota e catálogo. Eles são a base para evoluções fiscais futuras, como impostos por item, arredondamento conforme a legislação e moedas diferentes. Para quantidades, uma evolução possível é distinguir tipos para unidades inteiras e para pesos fracionados, o que tornaria a regra de \code{ProductUnit} ainda mais explícita; isso só se justifica se o domínio ficar mais complexo.
+
+\subsection{Agregação do carrinho e regras de domínio (Grupo 2)}
+O carrinho calcula as quantidades agregadas sob demanda a partir da lista de itens, o que elimina o risco de divergência entre estruturas. O custo é proporcional ao número de itens a cada consulta; só se justifica reintroduzir uma estrutura agregada com atualização centralizada se medições de desempenho mostrarem necessidade, para não acrescentar complexidade prematura. As validações podem ser ampliadas (restrições de comercialização, precisão permitida para pesos), sempre próximas dos conceitos que representam.
+
+\subsection{Novos formatos de saída e separação entre modelo e apresentação (Grupo 3)}
+A interface \code{ReceiptPrinterFormatter} separa o contrato das implementações, no padrão \textit{Strategy}. O formato HTML já foi implementado; JSON para uma API ou PDF seriam novas classes, sem alterar o printer de texto (MARTIN, 2011). A formatação de preço e quantidade está em \code{ReceiptFormat}, compartilhada por todos os formatos. Se surgir um terceiro formato com estrutura comum, o esqueleto pode ser extraído em uma classe abstrata (\textit{Template Method}). O método \code{ReceiptFormat.total()} devolve o rótulo \code{"Total: "}, que é um detalhe do layout em texto, e deve voltar para o \code{ReceiptPrinter}.
+
+\subsection{Catálogo real (Grupo 3)}
+Hoje só existe o catálogo de testes. Uma implementação de produção, com persistência em banco, deve usar o produto completo (nome e unidade) como chave, e tratar produto ausente com uma exceção de domínio.
+
+\subsection{Organização modular (Grupos 1, 2 e 3)}
+Os três planos convergem para um \textbf{monólito modular}, com pacotes por responsabilidade e sem serviços independentes: o sistema tem cerca de 700 linhas de produção, e a quebra em microsserviços não se justifica (SOMMERVILLE, 2019). A divisão proposta está no plano de modularização.
+
+\subsection{Qualidade automatizada (Grupos 1 e 2)}
+Complementar os testes unitários com testes baseados em propriedades (agregação de quantidades, validações de unidade), adotar análise estática e publicar a cobertura no CI, para acompanhar a evolução da qualidade e detectar regressões.
+
+\subsection{Exposição como serviço (Grupos 1 e 3)}
+Para uso por um ponto de venda, o cálculo da nota pode ser exposto por uma API HTTP, com um formato JSON implementado como mais uma estratégia de saída.
+
+\section{Cronograma, riscos e viabilidade}
+
+As fases de baixo risco (1, 2, 11) cabem no prazo da disciplina. As de maior alcance (5, 6 e 12) exigem coordenação entre os grupos. Configuração externa, banco de dados e API são evoluções futuras, fora da entrega.
+
+\begin{table}[H]\centering\small\singlespacing
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{1.8cm}Y}
+\toprule \textbf{Risco} & \textbf{Impacto} & \textbf{Mitigação e resultado} \\ \midrule
+Mudança de comportamento durante a refatoração & Alto & Testes de caracterização verdes a cada \textit{commit}. Ocorreu na troca para \code{Money}: os valores passaram a ser arredondados ao centavo, e a diferença foi registrada nos testes e na documentação. \\
+Alteração de tipo numérico que atravessa os grupos & Alto & Feita em conjunto e de forma atômica (\code{Money} e \code{Quantity}), com todos os testes atualizados. \\
+Conflitos entre grupos nas mesmas classes & Médio & \textit{Pull requests} pequenos e avisos entre grupos. \\
+Incompatibilidade ao mudar de JDK & Médio & Tratar o Java 21 como opcional e validar no CI. \\
+Análise estática gerar muitos alertas iniciais & Baixo & Registrar a linha de base e bloquear apenas novas violações. \\
+Custo da agregação sob demanda do carrinho & Médio & Manter enquanto não houver evidência de problema de desempenho. \\
+Injeção de HTML pelo nome do produto & Médio & Escape obrigatório no \code{ReceiptPrinterHtml}, com teste específico. \\
+Reorganização de pacotes gerar dependência circular & Médio & Analisar as dependências antes de mover classes (ver o plano de modularização). \\
+Prazo curto da disciplina & Médio & Priorizar fases já concluídas; registrar o restante como evolução. \\
+\bottomrule\end{tabularx}
+\caption{Riscos do plano e seu tratamento.}\end{table}
+
+A viabilidade das propostas depende do esforço para preservar a compatibilidade. Para o contexto atual, as mudanças já feitas melhoraram a consistência do modelo sem exigir troca de plataforma.
+
+\section{Indicadores de sucesso}
+
+\begin{itemize}
+\item Complexidade ciclomática do maior método de ofertas: de 13 (\code{handleOffers}) para 4 (\textbf{atingido}; Grupo 1).
+\item Nova oferta criada sem editar as classes existentes (\textbf{atingido}, demonstrado em \code{TellerTest}; Grupo 1).
+\item Carrinho com estrutura única de dados (\textbf{atingido}; Grupo 2) e validações nos construtores de produto e quantidade (\textbf{atingido}; Grupo 2).
+\item Precisão decimal para dinheiro e quantidade (\textbf{atingido} com \code{Money} e \code{Quantity}; Grupos 1, 2 e 3).
+\item Total impresso igual à soma das linhas (\textbf{atingido}: o caso de $-0{,}995$ imprime \code{Total: 0.00}; Grupo 3).
+\item Novo formato de saída sem alterar o printer de texto (\textbf{atingido} com o HTML; Grupo 3).
+\item Cobertura de 100\% das linhas e dos \textit{branches} e todos os testes passando no CI (\textbf{atingido}: 124 testes; todos os grupos).
+\item Análise estática no CI (\textbf{pendente}), Maven Wrapper (\textbf{pendente}) e Javadoc em todas as classes públicas (\textbf{parcial}).
+\end{itemize}
+
+\newpage
+\section*{REFERÊNCIAS}
+\addcontentsline{toc}{section}{REFERÊNCIAS}
+\begin{singlespace}\raggedright\noindent
+FEATHERS, Michael. \textbf{Trabalho eficaz com código legado}. Porto Alegre: Bookman, 2013.
+
+\vspace{12pt}\noindent GAMMA, Erich \textit{et al}. \textbf{Padrões de projeto}: soluções reutilizáveis de software orientado a objetos. Porto Alegre: Bookman, 2000.
+
+\vspace{12pt}\noindent MARTIN, Robert C. \textbf{Código limpo}: habilidades práticas do Agile software. Rio de Janeiro: Alta Books, 2011.
+
+\vspace{12pt}\noindent SOMMERVILLE, Ian. \textbf{Engenharia de software}. 10. ed. São Paulo: Pearson Education do Brasil, 2019.
+\end{singlespace}
+\end{document}

@@ -1,0 +1,49 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\usepackage{tgtermes}
+\usepackage[top=3cm,bottom=2cm,left=3cm,right=2cm]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage[font=small,labelfont=bf,labelsep=endash]{caption}
+\usepackage[hidelinks]{hyperref}
+\onehalfspacing
+\sloppy\emergencystretch=3em
+\renewcommand{\contentsname}{SUMÁRIO}
+\renewcommand{\tablename}{Tabela}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\setlist{itemsep=2pt,topsep=4pt}
+\titleformat{\section}{\normalfont\bfseries\MakeUppercase}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{18pt}{12pt}
+\titlespacing*{\subsection}{0pt}{14pt}{8pt}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\definecolor{cbg}{gray}{0.95}
+\lstset{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{cbg},frame=single,
+  framerule=0.3pt,rulecolor=\color{gray},breaklines=true,columns=fullflexible,
+  keepspaces=true,showstringspaces=false,xleftmargin=2pt,xrightmargin=2pt,
+  language=Java,keywordstyle=\bfseries,commentstyle=\itshape\color{gray}}
+\newcommand{\capa}[2]{%
+\pagestyle{empty}
+\begin{titlepage}\centering\singlespacing
+\includegraphics[width=4.5cm]{../../java/img/logo.png}\\[0.8cm]
+{\large UNIVERSIDADE CATÓLICA DO SALVADOR}\\[0.2cm]
+{\large Evolução e Modernização de Sistemas Legados -- 2026.2}\\[2.5cm]
+{\Large\bfseries #1}\\[0.8cm]
+{\large #2}\\[1.2cm]
+{\large Projeto: \textit{SupermarketReceipt Refactoring Kata} (Java)\\
+Plano unificado dos Grupos 1, 2 e 3}\\[2.5cm]
+{\large Manuel Bahamonde Boulhosa Neto (200031998) -- Grupo 1\\
+Juvenal Rosa Alves Costa Junior (200033214) -- Grupo 2\\
+Sérgio Lopes Júnior (200026817) -- Grupo 3}\vfill
+{\large Salvador\\ Novembro de 2026}
+\end{titlepage}
+\pagestyle{fancy}\fancyhf{}\fancyhead[R]{\small\thepage}\renewcommand{\headrulewidth}{0pt}}
