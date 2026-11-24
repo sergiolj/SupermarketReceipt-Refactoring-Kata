@@ -21,7 +21,7 @@ class ReceiptPrinterHtmlTest {
     @Test
     void singleUnitItemHasNoDetailRow() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 1, Money.of("0.99"));
+        receipt.addProduct(toothbrush, Quantity.of(1), Money.of("0.99"));
         assertEquals("<table class=\"receipt\">\n"
                 + "  <tr class=\"item\"><td>toothbrush</td><td class=\"amount\">0.99</td></tr>\n"
                 + "  <tr class=\"total\"><td>Total:</td><td class=\"amount\">0.99</td></tr>\n"
@@ -31,7 +31,7 @@ class ReceiptPrinterHtmlTest {
     @Test
     void itemWithQuantityAndDiscountShowsDetailAndDiscountRows() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 3, Money.of("0.99"));
+        receipt.addProduct(toothbrush, Quantity.of(3), Money.of("0.99"));
         receipt.addDiscount(new Discount(toothbrush, "3 for 2", Money.of("-0.99")));
         assertEquals("<table class=\"receipt\">\n"
                 + "  <tr class=\"item\"><td>toothbrush</td><td class=\"amount\">2.97</td></tr>\n"
@@ -44,7 +44,7 @@ class ReceiptPrinterHtmlTest {
     @Test
     void escapesHtmlInProductNames() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(new Product("<b>Tom & \"Jerry's\"</b>", ProductUnit.EACH), 1, Money.of("1.00"));
+        receipt.addProduct(new Product("<b>Tom & \"Jerry's\"</b>", ProductUnit.EACH), Quantity.of(1), Money.of("1.00"));
         String html = printer.printReceipt(receipt);
         assertTrue(html.contains("&lt;b&gt;Tom &amp; &quot;Jerry&#39;s&quot;&lt;/b&gt;"));
         assertFalse(html.contains("<b>"));

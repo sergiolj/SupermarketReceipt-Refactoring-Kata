@@ -19,7 +19,7 @@ class SupermarketTest {
         assertEquals(product, receiptItem.product());
         assertEquals(Money.of(itemPrice), receiptItem.price());
         assertEquals(Money.of(totalWithoutDiscount), receiptItem.totalPrice());
-        assertEquals(itemQuantity, receiptItem.quantity());
+        assertEquals(Quantity.of(itemQuantity), receiptItem.quantity());
 	}
 	
 	

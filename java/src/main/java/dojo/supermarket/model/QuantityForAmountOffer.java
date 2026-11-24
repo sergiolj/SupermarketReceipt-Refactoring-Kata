@@ -12,8 +12,8 @@ import java.util.Optional;
 public record QuantityForAmountOffer(int groupSize, Money amount) implements OfferStrategy {
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
-        int units = (int) quantity;
+    public Optional<Discount> discountFor(Product product, Quantity quantity, Money unitPrice) {
+        int units = quantity.wholeUnits();
         if (units < groupSize) {
             return Optional.empty();
         }

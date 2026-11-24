@@ -11,8 +11,8 @@ public record ThreeForTwoOffer() implements OfferStrategy {
     private static final int PAID_PER_GROUP = 2;
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
-        int units = (int) quantity;
+    public Optional<Discount> discountFor(Product product, Quantity quantity, Money unitPrice) {
+        int units = quantity.wholeUnits();
         if (units < GROUP_SIZE) {
             return Optional.empty();
         }

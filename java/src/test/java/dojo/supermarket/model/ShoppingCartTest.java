@@ -21,7 +21,7 @@ class ShoppingCartTest {
         ShoppingCart cart = new ShoppingCart();
         cart.addItem(rice);
         assertEquals(1, cart.getItems().size());
-        assertEquals(1.0, cart.productQuantities().get(rice));
+        assertEquals(Quantity.ONE, cart.productQuantities().get(rice));
     }
 
     @Test
@@ -32,8 +32,8 @@ class ShoppingCartTest {
         cart.addItemQuantity(rice, 2);
 
         assertEquals(3, cart.getItems().size());
-        assertEquals(2.0, cart.productQuantities().get(apples), 0.0001);
-        assertEquals(2.0, cart.productQuantities().get(rice), 0.0001);
+        assertEquals(Quantity.of(2.0), cart.productQuantities().get(apples));
+        assertEquals(Quantity.of(2.0), cart.productQuantities().get(rice));
     }
 
     @Test
@@ -42,5 +42,13 @@ class ShoppingCartTest {
         cart.addItem(rice);
         assertThrows(UnsupportedOperationException.class, () -> cart.getItems().clear());
         assertThrows(UnsupportedOperationException.class, () -> cart.productQuantities().clear());
+    }
+
+    @Test
+    void fractionalKilosAddUpExactly() {
+        ShoppingCart cart = new ShoppingCart();
+        cart.addItemQuantity(apples, 0.1);
+        cart.addItemQuantity(apples, 0.2);
+        assertEquals(Quantity.of("0.300"), cart.productQuantities().get(apples));
     }
 }

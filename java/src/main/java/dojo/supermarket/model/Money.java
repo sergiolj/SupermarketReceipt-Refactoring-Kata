@@ -53,6 +53,11 @@ public record Money(BigDecimal amount) implements Comparable<Money> {
         return times(BigDecimal.valueOf(quantity));
     }
 
+    /** Multiplica por uma quantidade exata e arredonda ao centavo. */
+    public Money times(Quantity quantity) {
+        return times(quantity.value());
+    }
+
     /** Multiplica por um fator decimal exato e arredonda ao centavo uma única vez. */
     public Money times(BigDecimal factor) {
         return new Money(amount.multiply(factor));

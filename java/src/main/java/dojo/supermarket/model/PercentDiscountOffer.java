@@ -11,8 +11,8 @@ import java.util.Optional;
 public record PercentDiscountOffer(double percent) implements OfferStrategy {
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
-        BigDecimal factor = BigDecimal.valueOf(quantity).multiply(BigDecimal.valueOf(percent)).divide(BigDecimal.valueOf(100));
+    public Optional<Discount> discountFor(Product product, Quantity quantity, Money unitPrice) {
+        BigDecimal factor = quantity.value().multiply(BigDecimal.valueOf(percent)).divide(BigDecimal.valueOf(100));
         Money discountAmount = unitPrice.times(factor).negate();
         return Optional.of(new Discount(product, percent + "% off", discountAmount));
     }

@@ -15,5 +15,5 @@ public interface OfferStrategy {
      * @param unitPrice preço unitário do produto no catálogo
      * @return o desconto (valor negativo), ou vazio quando a promoção não se aplica
      */
-    Optional<Discount> discountFor(Product product, double quantity, Money unitPrice);
+    Optional<Discount> discountFor(Product product, Quantity quantity, Money unitPrice);
 }

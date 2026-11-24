@@ -15,23 +15,27 @@ public class ShoppingCart {
     }
 
     void addItem(Product product) {
-        addItemQuantity(product, 1.0);
+        addItemQuantity(product, Quantity.ONE);
     }
 
-    Map<Product, Double> productQuantities() {
-        Map<Product, Double> quantities = new HashMap<>();
+    Map<Product, Quantity> productQuantities() {
+        Map<Product, Quantity> quantities = new HashMap<>();
 
         for (ProductQuantity item : items) {
             quantities.merge(
                     item.product(),
                     item.quantity(),
-                    Double::sum);
+                    Quantity::plus);
         }
 
         return Collections.unmodifiableMap(quantities);
     }
 
-    public void addItemQuantity(Product product, double quantity) {
+    public void addItemQuantity(Product product, Quantity quantity) {
         items.add(new ProductQuantity(product, quantity));
+    }
+
+    public void addItemQuantity(Product product, double quantity) {
+        addItemQuantity(product, Quantity.of(quantity));
     }
 }

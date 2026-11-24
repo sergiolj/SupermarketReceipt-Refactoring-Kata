@@ -27,8 +27,8 @@ public class SpecialOffers {
      * Registra na nota o desconto de cada produto do carrinho que tenha oferta aplicável e, depois,
      * o de cada pacote completo.
      */
-    void applyTo(Map<Product, Double> quantities, SupermarketCatalog catalog, Receipt receipt) {
-        for (Map.Entry<Product, Double> entry : quantities.entrySet()) {
+    void applyTo(Map<Product, Quantity> quantities, SupermarketCatalog catalog, Receipt receipt) {
+        for (Map.Entry<Product, Quantity> entry : quantities.entrySet()) {
             Product product = entry.getKey();
             OfferStrategy strategy = offers.get(product);
             if (strategy == null) {

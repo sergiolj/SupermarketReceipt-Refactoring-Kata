@@ -27,21 +27,21 @@ class SpecialOffersTest {
 
     @Test
     void productsWithoutOfferGetNoDiscount() {
-        offers.applyTo(Map.of(toothbrush, 3.0), catalog, receipt);
+        offers.applyTo(Map.of(toothbrush, Quantity.of(3.0)), catalog, receipt);
         assertTrue(receipt.getDiscounts().isEmpty());
     }
 
     @Test
     void offerForAnotherProductDoesNotApply() {
         offers.add(apples, new PercentDiscountOffer(10));
-        offers.applyTo(Map.of(toothbrush, 3.0), catalog, receipt);
+        offers.applyTo(Map.of(toothbrush, Quantity.of(3.0)), catalog, receipt);
         assertTrue(receipt.getDiscounts().isEmpty());
     }
 
     @Test
     void applicableOfferAddsDiscountToReceipt() {
         offers.add(toothbrush, new ThreeForTwoOffer());
-        offers.applyTo(Map.of(toothbrush, 3.0), catalog, receipt);
+        offers.applyTo(Map.of(toothbrush, Quantity.of(3.0)), catalog, receipt);
         assertEquals(1, receipt.getDiscounts().size());
         assertEquals(Money.of("-0.99"), receipt.getDiscounts().get(0).discountAmount());
     }
@@ -49,7 +49,7 @@ class SpecialOffersTest {
     @Test
     void offerBelowItsMinimumAddsNothing() {
         offers.add(toothbrush, new ThreeForTwoOffer());
-        offers.applyTo(Map.of(toothbrush, 2.0), catalog, receipt);
+        offers.applyTo(Map.of(toothbrush, Quantity.of(2.0)), catalog, receipt);
         assertTrue(receipt.getDiscounts().isEmpty());
     }
 
@@ -57,7 +57,7 @@ class SpecialOffersTest {
     void newOfferForSameProductReplacesPreviousOne() {
         offers.add(toothbrush, new ThreeForTwoOffer());
         offers.add(toothbrush, new PercentDiscountOffer(50));
-        offers.applyTo(Map.of(toothbrush, 3.0), catalog, receipt);
+        offers.applyTo(Map.of(toothbrush, Quantity.of(3.0)), catalog, receipt);
         assertEquals("50.0% off", receipt.getDiscounts().get(0).description());
     }
 }
