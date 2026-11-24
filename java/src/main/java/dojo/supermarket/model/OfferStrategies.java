@@ -16,8 +16,8 @@ public final class OfferStrategies {
         return switch (type) {
             case THREE_FOR_TWO -> new ThreeForTwoOffer();
             case TEN_PERCENT_DISCOUNT -> new PercentDiscountOffer(argument);
-            case TWO_FOR_AMOUNT -> new QuantityForAmountOffer(2, argument);
-            case FIVE_FOR_AMOUNT -> new QuantityForAmountOffer(5, argument);
+            case TWO_FOR_AMOUNT -> new QuantityForAmountOffer(2, Money.of(argument));
+            case FIVE_FOR_AMOUNT -> new QuantityForAmountOffer(5, Money.of(argument));
         };
     }
 }

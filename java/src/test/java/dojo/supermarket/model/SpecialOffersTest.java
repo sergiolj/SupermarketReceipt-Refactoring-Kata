@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpecialOffersTest {
 
-    private static final double DELTA = 0.001;
     private final Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
     private final Product apples = new Product("apples", ProductUnit.KILO);
     private SupermarketCatalog catalog;
@@ -20,8 +19,8 @@ class SpecialOffersTest {
     @BeforeEach
     void setUp() {
         catalog = new FakeCatalog();
-        catalog.addProduct(toothbrush, 0.99);
-        catalog.addProduct(apples, 1.99);
+        catalog.addProduct(toothbrush, Money.of("0.99"));
+        catalog.addProduct(apples, Money.of("1.99"));
         offers = new SpecialOffers();
         receipt = new Receipt();
     }
@@ -44,7 +43,7 @@ class SpecialOffersTest {
         offers.add(toothbrush, new ThreeForTwoOffer());
         offers.applyTo(Map.of(toothbrush, 3.0), catalog, receipt);
         assertEquals(1, receipt.getDiscounts().size());
-        assertEquals(-0.99, receipt.getDiscounts().get(0).discountAmount(), DELTA);
+        assertEquals(Money.of("-0.99"), receipt.getDiscounts().get(0).discountAmount());
     }
 
     @Test

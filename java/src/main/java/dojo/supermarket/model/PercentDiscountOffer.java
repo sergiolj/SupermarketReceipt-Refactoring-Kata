@@ -1,5 +1,6 @@
 package dojo.supermarket.model;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 /**
@@ -10,8 +11,9 @@ import java.util.Optional;
 public record PercentDiscountOffer(double percent) implements OfferStrategy {
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, double unitPrice) {
-        double discountAmount = -quantity * unitPrice * percent / 100.0;
+    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
+        BigDecimal factor = BigDecimal.valueOf(quantity).multiply(BigDecimal.valueOf(percent)).divide(BigDecimal.valueOf(100));
+        Money discountAmount = unitPrice.times(factor).negate();
         return Optional.of(new Discount(product, percent + "% off", discountAmount));
     }
 }
