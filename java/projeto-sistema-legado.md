@@ -487,7 +487,7 @@ O `Money` arredonda ao centavo (`HALF_UP`), então alguns valores mudaram, e os 
 | L-18 | Resolvido: `SpecialOffers` extraído do `Teller`. |
 | L-24 | Parcial: o argumento ignorado do "3 por 2" continua na API pública `addSpecialOffer(tipo, produto, valor)`, por compatibilidade. |
 | L-25 | Pendente: o contrato do catálogo não define o que acontece com produto inexistente. |
-| L-26 | Pendente: `java/bin/pom.xml` continua versionado. |
+| L-26 | Resolvido: `java/bin/pom.xml` removido (o build segue passando com 110 testes). |
 
 #### Pendências e evolução futura
 
