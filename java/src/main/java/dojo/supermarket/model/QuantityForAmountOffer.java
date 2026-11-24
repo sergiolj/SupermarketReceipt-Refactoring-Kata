@@ -9,16 +9,16 @@ import java.util.Optional;
  * @param groupSize quantidade de unidades de cada grupo
  * @param amount    valor fixo cobrado por grupo completo
  */
-public record QuantityForAmountOffer(int groupSize, double amount) implements OfferStrategy {
+public record QuantityForAmountOffer(int groupSize, Money amount) implements OfferStrategy {
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, double unitPrice) {
+    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
         int units = (int) quantity;
         if (units < groupSize) {
             return Optional.empty();
         }
-        double payable = amount * (units / groupSize) + units % groupSize * unitPrice;
-        double discountAmount = unitPrice * quantity - payable;
-        return Optional.of(new Discount(product, groupSize + " for " + amount, -discountAmount));
+        Money payable = amount.times(units / groupSize).plus(unitPrice.times(units % groupSize));
+        Money fullPrice = unitPrice.times(quantity);
+        return Optional.of(new Discount(product, groupSize + " for " + amount, payable.minus(fullPrice)));
     }
 }

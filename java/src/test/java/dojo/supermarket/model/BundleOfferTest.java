@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BundleOfferTest {
 
-    private static final double DELTA = 0.001;
     private final Product toothbrush = new Product("toothbrush", ProductUnit.EACH);
     private final Product toothpaste = new Product("toothpaste", ProductUnit.EACH);
     private final Product apples = new Product("apples", ProductUnit.KILO);
@@ -22,9 +21,9 @@ class BundleOfferTest {
     @BeforeEach
     void setUp() {
         catalog = new FakeCatalog();
-        catalog.addProduct(toothbrush, 0.99);
-        catalog.addProduct(toothpaste, 1.79);
-        catalog.addProduct(apples, 1.99);
+        catalog.addProduct(toothbrush, Money.of("0.99"));
+        catalog.addProduct(toothpaste, Money.of("1.79"));
+        catalog.addProduct(apples, Money.of("1.99"));
         bundle = new BundleOffer(List.of(toothbrush, toothpaste), 10.0);
     }
 
@@ -33,19 +32,19 @@ class BundleOfferTest {
         Discount d = bundle.discountFor(Map.of(toothbrush, 1.0, toothpaste, 1.0), catalog).orElseThrow();
         assertEquals(toothbrush, d.product());
         assertEquals("bundle 10.0% off", d.description());
-        assertEquals(-0.278, d.discountAmount(), DELTA); // 10% de 0.99 + 1.79
+        assertEquals(Money.of("-0.28"), d.discountAmount()); // 10% de 0.99 + 1.79 = 0.278
     }
 
     @Test
     void extraItemsOutsideACompleteBundleAreNotDiscounted() {
         Discount d = bundle.discountFor(Map.of(toothbrush, 2.0, toothpaste, 1.0), catalog).orElseThrow();
-        assertEquals(-0.278, d.discountAmount(), DELTA);
+        assertEquals(Money.of("-0.28"), d.discountAmount());
     }
 
     @Test
     void twoCompleteBundlesDoubleTheDiscount() {
         Discount d = bundle.discountFor(Map.of(toothbrush, 2.0, toothpaste, 2.0), catalog).orElseThrow();
-        assertEquals(-0.556, d.discountAmount(), DELTA);
+        assertEquals(Money.of("-0.56"), d.discountAmount());
     }
 
     @Test
@@ -63,7 +62,7 @@ class BundleOfferTest {
         BundleOffer withApples = new BundleOffer(List.of(toothbrush, apples), 10.0);
         assertTrue(withApples.discountFor(Map.of(toothbrush, 1.0, apples, 0.8), catalog).isEmpty());
         Discount d = withApples.discountFor(Map.of(toothbrush, 1.0, apples, 1.5), catalog).orElseThrow();
-        assertEquals(-0.298, d.discountAmount(), DELTA); // 10% de 0.99 + 1.99, um pacote
+        assertEquals(Money.of("-0.30"), d.discountAmount()); // 10% de 0.99 + 1.99 = 0.298, um pacote
     }
 
     @Test

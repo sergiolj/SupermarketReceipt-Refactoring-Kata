@@ -11,8 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class OfferCharacterizationTest {
 
-    private static final double DELTA = 0.001;
-
     private SupermarketCatalog catalog;
     private Teller teller;
     private Product toothbrush;
@@ -23,8 +21,8 @@ class OfferCharacterizationTest {
         catalog = new FakeCatalog();
         toothbrush = new Product("toothbrush", ProductUnit.EACH);
         apples = new Product("apples", ProductUnit.KILO);
-        catalog.addProduct(toothbrush, 0.99);
-        catalog.addProduct(apples, 1.99);
+        catalog.addProduct(toothbrush, Money.of("0.99"));
+        catalog.addProduct(apples, Money.of("1.99"));
         teller = new Teller(catalog);
     }
 
@@ -43,7 +41,7 @@ class OfferCharacterizationTest {
         Discount d = receipt.getDiscounts().get(0);
         assertEquals(product, d.product());
         assertEquals(description, d.description());
-        assertEquals(amount, d.discountAmount(), DELTA);
+        assertEquals(Money.of(amount), d.discountAmount());
     }
 
     // ---------- sem oferta ----------
@@ -51,7 +49,7 @@ class OfferCharacterizationTest {
     @Test
     void emptyCartHasZeroTotalAndNoItems() {
         Receipt receipt = checkout(new ShoppingCart());
-        assertEquals(0.0, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(0.0), receipt.getTotalPrice());
         assertTrue(receipt.getItems().isEmpty());
         assertTrue(receipt.getDiscounts().isEmpty());
     }
@@ -60,7 +58,7 @@ class OfferCharacterizationTest {
     void productWithoutOfferPaysFullPrice() {
         Receipt receipt = checkout(cartWith(toothbrush, 4));
         assertTrue(receipt.getDiscounts().isEmpty());
-        assertEquals(3.96, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(3.96), receipt.getTotalPrice());
     }
 
     @Test
@@ -68,7 +66,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.TEN_PERCENT_DISCOUNT, apples, 20.0);
         Receipt receipt = checkout(cartWith(toothbrush, 2));
         assertTrue(receipt.getDiscounts().isEmpty());
-        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(1.98), receipt.getTotalPrice());
     }
 
     // ---------- TEN_PERCENT_DISCOUNT ----------
@@ -79,7 +77,7 @@ class OfferCharacterizationTest {
         Receipt receipt = checkout(cartWith(apples, 2.5));
         // 2.5 * 1.99 = 4.975 ; 20% = 0.995
         assertSingleDiscount(receipt, apples, "20.0% off", -0.995);
-        assertEquals(3.98, receipt.getTotalPrice(), 0.01);
+        assertEquals(Money.of(3.98), receipt.getTotalPrice());
     }
 
     @Test
@@ -96,7 +94,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
         Receipt receipt = checkout(cartWith(toothbrush, 2));
         assertTrue(receipt.getDiscounts().isEmpty());
-        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(1.98), receipt.getTotalPrice());
     }
 
     @Test
@@ -104,7 +102,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
         Receipt receipt = checkout(cartWith(toothbrush, 4));
         assertSingleDiscount(receipt, toothbrush, "3 for 2", -0.99);
-        assertEquals(2.97, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(2.97), receipt.getTotalPrice());
     }
 
     @Test
@@ -112,7 +110,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.THREE_FOR_TWO, toothbrush, 0);
         Receipt receipt = checkout(cartWith(toothbrush, 6));
         assertSingleDiscount(receipt, toothbrush, "3 for 2", -1.98);
-        assertEquals(3.96, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(3.96), receipt.getTotalPrice());
     }
 
     // ---------- TWO_FOR_AMOUNT ----------
@@ -122,7 +120,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, toothbrush, 1.50);
         Receipt receipt = checkout(cartWith(toothbrush, 1));
         assertTrue(receipt.getDiscounts().isEmpty());
-        assertEquals(0.99, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(0.99), receipt.getTotalPrice());
     }
 
     @Test
@@ -130,8 +128,8 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.TWO_FOR_AMOUNT, toothbrush, 1.50);
         Receipt receipt = checkout(cartWith(toothbrush, 4));
         // total = 1.50*2 = 3.00 ; sem oferta = 3.96 ; desconto = 0.96
-        assertSingleDiscount(receipt, toothbrush, "2 for 1.5", -0.96);
-        assertEquals(3.00, receipt.getTotalPrice(), DELTA);
+        assertSingleDiscount(receipt, toothbrush, "2 for 1.50", -0.96);
+        assertEquals(Money.of(3.00), receipt.getTotalPrice());
     }
 
     // ---------- FIVE_FOR_AMOUNT ----------
@@ -141,7 +139,7 @@ class OfferCharacterizationTest {
         teller.addSpecialOffer(SpecialOfferType.FIVE_FOR_AMOUNT, toothbrush, 3.99);
         Receipt receipt = checkout(cartWith(toothbrush, 4));
         assertTrue(receipt.getDiscounts().isEmpty());
-        assertEquals(3.96, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(3.96), receipt.getTotalPrice());
     }
 
     @Test
@@ -150,7 +148,7 @@ class OfferCharacterizationTest {
         Receipt receipt = checkout(cartWith(toothbrush, 10));
         // 9.90 - 2*3.99 = 1.92
         assertSingleDiscount(receipt, toothbrush, "5 for 3.99", -1.92);
-        assertEquals(7.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(7.98), receipt.getTotalPrice());
     }
 
     // ---------- carrinho com várias linhas / produtos ----------
@@ -166,7 +164,7 @@ class OfferCharacterizationTest {
 
         assertEquals(2, receipt.getItems().size()); // uma linha por adição
         assertSingleDiscount(receipt, toothbrush, "3 for 2", -0.99);
-        assertEquals(1.98, receipt.getTotalPrice(), DELTA);
+        assertEquals(Money.of(1.98), receipt.getTotalPrice());
     }
 
     @Test
@@ -181,8 +179,8 @@ class OfferCharacterizationTest {
 
         assertEquals(2, receipt.getItems().size());
         assertEquals(2, receipt.getDiscounts().size());
-        // 2.97 + 3.98 - 0.99 - 0.398 = 5.562
-        assertEquals(5.562, receipt.getTotalPrice(), 0.01);
+        // 2.97 + 3.98 - 0.99 - 0.40 (0.398 arredondado) = 5.56
+        assertEquals(Money.of(5.56), receipt.getTotalPrice());
     }
 
     @Test

@@ -37,9 +37,9 @@ public record BundleOffer(List<Product> products, double percent) {
         if (completeBundles == 0) {
             return Optional.empty();
         }
-        double bundlePrice = products.stream().mapToDouble(catalog::getUnitPrice).sum();
-        double discountAmount = bundlePrice * completeBundles * percent / 100.0;
-        return Optional.of(new Discount(products.get(0), "bundle " + percent + "% off", -discountAmount));
+        Money bundlePrice = products.stream().map(catalog::getUnitPrice).reduce(Money.ZERO, Money::plus);
+        Money discountAmount = bundlePrice.times(completeBundles).percent(percent).negate();
+        return Optional.of(new Discount(products.get(0), "bundle " + percent + "% off", discountAmount));
     }
 
     private int completeBundles(Map<Product, Double> quantities) {

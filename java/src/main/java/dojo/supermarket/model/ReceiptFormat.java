@@ -13,8 +13,8 @@ public class ReceiptFormat {
 		
 	}
 	
-	public static String price(double value) {
-		return String.format(Locale.UK, PRICE_FORMAT, value);
+	public static String price(Money value) {
+		return String.format(Locale.UK, PRICE_FORMAT, value.amount());
 	}
 	
 	public static String quantity(ReceiptItem item) {

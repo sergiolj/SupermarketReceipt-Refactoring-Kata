@@ -9,12 +9,13 @@ public class Receipt {
     private final List<ReceiptItem> items = new ArrayList<>();
     private final List<Discount> discounts = new ArrayList<>();
 
-    public double getTotalPrice() {
-        return items.stream().mapToDouble(ReceiptItem::totalPrice).sum() //
-                + discounts.stream().mapToDouble(Discount::discountAmount).sum();
+    public Money getTotalPrice() {
+        Money itemsTotal = items.stream().map(ReceiptItem::totalPrice).reduce(Money.ZERO, Money::plus);
+        Money discountsTotal = discounts.stream().map(Discount::discountAmount).reduce(Money.ZERO, Money::plus);
+        return itemsTotal.plus(discountsTotal);
     }
 
-    public void addProduct(Product p, double quantity, double price) {
+    public void addProduct(Product p, double quantity, Money price) {
         items.add(new ReceiptItem(p, quantity, price));
     }
 

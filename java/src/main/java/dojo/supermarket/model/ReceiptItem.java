@@ -1,9 +1,9 @@
 package dojo.supermarket.model;
 
-public record ReceiptItem(Product product, double quantity, double price) {
+public record ReceiptItem(Product product, double quantity, Money price) {
 	
-	public double totalPrice() {
-		return this.price * quantity;
+	public Money totalPrice() {
+		return this.price.times(quantity);
 	}
 	
 	public boolean hasSingleQuantity() {

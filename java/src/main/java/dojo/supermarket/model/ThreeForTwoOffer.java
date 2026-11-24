@@ -11,14 +11,14 @@ public record ThreeForTwoOffer() implements OfferStrategy {
     private static final int PAID_PER_GROUP = 2;
 
     @Override
-    public Optional<Discount> discountFor(Product product, double quantity, double unitPrice) {
+    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
         int units = (int) quantity;
         if (units < GROUP_SIZE) {
             return Optional.empty();
         }
         int completeGroups = units / GROUP_SIZE;
-        double discountAmount = quantity * unitPrice
-                - ((completeGroups * PAID_PER_GROUP * unitPrice) + units % GROUP_SIZE * unitPrice);
-        return Optional.of(new Discount(product, "3 for 2", -discountAmount));
+        Money fullPrice = unitPrice.times(quantity);
+        Money payable = unitPrice.times(completeGroups * PAID_PER_GROUP + units % GROUP_SIZE);
+        return Optional.of(new Discount(product, "3 for 2", payable.minus(fullPrice)));
     }
 }
