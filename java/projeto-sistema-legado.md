@@ -179,7 +179,8 @@ No algoritmo observado não existe um main e os testes concentram o que se pode 
 | L-01 | Resolvido | O campo `argument` foi renomeado para `fixedValueOrQuantity` em `Offer`. |
 | L-07 | Reclassificado | Os testes de caracterização provam que `THREE_FOR_TWO` e `FIVE_FOR_AMOUNT` **estão implementadas** e funcionam (3 por 2 com 4 e 6 itens; 5 por valor com 5, 6 e 10 itens). O problema real é de legibilidade: o cálculo está espalhado em blocos `if` separados que testam o mesmo tipo de oferta mais de uma vez. |
 | L-13 | Pendente | `Product` e `ProductQuantity` continuam como dois records na `main`. |
-| L-03 | Parcial | O dinheiro em `double` foi trocado pelo tipo `Money` (PR #30); a quantidade em `double` continua pendente (Grupo 2). |
+| L-03 | Resolvido | O dinheiro em `double` virou `Money` (PR #30) e a quantidade em `double` virou `Quantity` (PR #34). |
+| L-05 | Resolvido | O cast para `int` das regras de oferta ficou concentrado em `Quantity.wholeUnits()`. |
 | L-16 | Resolvido (Grupo 3) | `Receipt.addProduct` passou a receber três parâmetros, sem o total, que agora é calculado. |
 | L-17 | Resolvido (Grupo 3) | O import sem uso de `ReceiptItem` foi removido. |
 
@@ -359,7 +360,7 @@ Um único método concentra a complexidade do sistema. Cada nova oferta (como o 
 
 ### Grupo 1: Ofertas e caixa (Manuel Bahamonde Boulhosa Neto)
 
-**Escopo:** `Teller`, `Offer`, `SpecialOfferType` e a lógica de promoções que estava dentro de `ShoppingCart.handleOffers`. O trabalho foi integrado à `main` pelos PRs #9, #13, #14, #16 e #30 (este último, o `Money`, compartilhado com os demais grupos). Ao final, a suíte do projeto tem **110 testes, todos passando**, com **99,0% de cobertura de linhas e 100% de branches** (JaCoCo).
+**Escopo:** `Teller`, `Offer`, `SpecialOfferType` e a lógica de promoções que estava dentro de `ShoppingCart.handleOffers`. O trabalho foi integrado à `main` pelos PRs #9, #13, #14, #16 e #30 (este último, o `Money`, compartilhado com os demais grupos). Ao final do grupo, a suíte do projeto tinha **110 testes, todos passando**, com **99,0% de cobertura de linhas e 100% de branches** (JaCoCo); hoje, com os trabalhos dos outros grupos, são **124 testes e 100% de cobertura**.
 
 **Método:** cada passo foi feito em um commit próprio, com a suíte verde antes e depois. Antes de mexer no código, foram escritos testes de caracterização para registrar o comportamento do legado (FEATHERS, 2013). A complexidade ciclomática foi contada manualmente, e a cobertura medida com JaCoCo, adicionado ao `pom.xml` para ter a linha de base antes da refatoração (98,9% das linhas e 100% dos branches).
 
@@ -469,8 +470,8 @@ teller.addSpecialOffer(rice, oneOffFromTwoUnits);
 | --------- | ----- | ------ |
 | Maior complexidade ciclomática de um método | 13 (`handleOffers`) | 4 (`OfferStrategies.from`) |
 | Cadeias condicionais com regra de oferta | 1 | 0 |
-| Dependências de `ShoppingCart` | 7 | 2 |
-| Dependências de `Teller` | 7 | 11 (**piorou**: delega por `SpecialOffers`, `OfferStrategies` e `OfferStrategy`, e passou a usar `BundleOffer` e `Money`; a responsabilidade diminuiu, mas a contagem de tipos aumentou) |
+| Dependências de `ShoppingCart` | 7 | 3 (eram 2 após a refatoração de ofertas; `Quantity` entrou no PR #34) |
+| Dependências de `Teller` | 7 | 12 (**piorou**: delega por `SpecialOffers`, `OfferStrategies` e `OfferStrategy`, e passou a usar `BundleOffer`, `Money` e `Quantity`; a responsabilidade diminuiu, mas a contagem de tipos aumentou) |
 | Testes (projeto inteiro) | 6 | 110 |
 | Cobertura de linhas / branches | 98,9% / 100% (linha de base) | 99,0% / 100% |
 
@@ -483,7 +484,7 @@ O `Money` arredonda ao centavo (`HALF_UP`), então alguns valores mudaram, e os 
 | Achado | Situação |
 | ------ | -------- |
 | L-01 | Resolvido: campo `argument` renomeado e depois eliminado com o record `Offer`. |
-| L-03 | **Parcial:** dinheiro resolvido pelo `Money`; a quantidade em `double` continua pendente (Grupo 2). |
+| L-03 | Resolvido: dinheiro pelo `Money` (Grupo 1) e quantidade pelo `Quantity` (Grupo 2). |
 | L-04, L-07, L-19, L-20, L-21 | Resolvidos pelo Strategy. |
 | L-18 | Resolvido: `SpecialOffers` extraído do `Teller`. |
 | L-24 | Parcial: o argumento ignorado do "3 por 2" continua na API pública `addSpecialOffer(tipo, produto, valor)`, por compatibilidade. |
@@ -496,6 +497,125 @@ O `Money` arredonda ao centavo (`HALF_UP`), então alguns valores mudaram, e os 
 - O desconto do pacote aparece na nota com o nome do primeiro produto, porque `Discount` guarda um único produto.
 - `Teller.addSpecialOffer(tipo, produto, double)` ainda recebe o valor da oferta como `double`; ele converte para `Money` internamente.
 - Javadoc em `Teller` e `SpecialOfferType`, análise estática (Checkstyle ou PMD) e Maven Wrapper (planos do Grupo 1).
+
+### Grupo 2: Carrinho e quantidades (Juvenal Rosa Alves Costa Junior)
+
+**Escopo:** `ShoppingCart`, `ProductQuantity`, `Product` e `ProductUnit`. O trabalho foi integrado à `main` pelos PRs #25 e #29 (Juvenal) e #34 (tipo `Quantity`, implementado por Manuel em acordo com o grupo para fechar o desafio da quantidade em `double`). Ao final, a suíte do projeto tem **124 testes, todos passando**, com **100% de cobertura de linhas e de branches** (JaCoCo).
+
+**Método:** cada passo foi feito em um commit próprio, com a suíte verde antes e depois, e validações novas ganharam testes próprios (FEATHERS, 2013).
+
+#### Testes adicionados
+
+| Commit | Teste | Comportamento registrado |
+| ------ | ----- | ------------------------ |
+| `d1e58c3` | `ProductTest` (5) | Produto rejeita nome nulo ou em branco e unidade nula. |
+| `d1e58c3` | `ProductQuantityTest` (11) | Rejeita produto nulo, quantidade negativa, `NaN`, infinitos e quantidade nula; aceita zero; fracionária só para produto por peso; inteira para unidade discreta. |
+| `d1e58c3` | `ProductUnitTest` (7) | `KILO` aceita fração, `EACH` só inteiros; `isDiscrete()`; aceitação também para objetos `Quantity`. |
+| `832c9b9` | `QuantityTest` (7) | Igualdade por valor, soma exata de quilos, parte inteira, rejeição de valores inválidos. |
+| `789d5ae` | `ShoppingCartTest` | Quilos fracionados somam exatamente (0,1 + 0,2 = 0,300). |
+
+#### Refatorações aplicadas
+
+| Commit | Refatoração (referência) | Problema no legado | Resultado |
+| ------ | ------------------------ | ------------------ | --------- |
+| `11ab6fe` | *Replace Derived Variable with Query* (FOWLER, 2020) | O carrinho guardava o mesmo estado duas vezes: a lista `items` e o mapa `productQuantities`, atualizados juntos em `addItemQuantity`, com risco de divergência. | Só a lista `items` é guardada; `productQuantities()` calcula as quantidades sob demanda com `Map.merge`. |
+| `4f6da97` | Validação no construtor (*Introduce Assertion*, FOWLER, 2020) | `Product` e `ProductQuantity` aceitavam qualquer valor, inclusive nome vazio, unidade nula e quantidade negativa ou não finita. | Construtores compactos validam e lançam `IllegalArgumentException`. |
+| `4f6da97` | *Move Function* para o dado (FOWLER, 2020) | A regra "unidade discreta só aceita inteiros" não existia. | `ProductUnit.acceptsQuantity(...)` concentra a regra. |
+| `832c9b9`, `789d5ae` | *Replace Primitive with Object* (FOWLER, 2020) | A quantidade era um `double` para unidades e quilos, com `(int)` espalhado pelas regras de oferta (L-03, L-05). | Tipo `Quantity` (decimal exato, três casas), com `wholeUnits()` concentrando o cast. |
+
+#### Evidências "Antes" vs. "Depois"
+
+**1. Estado duplicado do carrinho**
+
+Antes:
+
+```java
+private final List<ProductQuantity> items = new ArrayList<>();
+private final Map<Product, Double> productQuantities = new HashMap<>();
+
+public void addItemQuantity(Product product, double quantity) {
+    items.add(new ProductQuantity(product, quantity));
+    if (productQuantities.containsKey(product)) {
+        productQuantities.put(product, productQuantities.get(product) + quantity);
+    } else {
+        productQuantities.put(product, quantity);
+    }
+}
+```
+
+Depois:
+
+```java
+private final List<ProductQuantity> items = new ArrayList<>();
+
+Map<Product, Quantity> productQuantities() {
+    Map<Product, Quantity> quantities = new HashMap<>();
+    for (ProductQuantity item : items) {
+        quantities.merge(item.product(), item.quantity(), Quantity::plus);
+    }
+    return Collections.unmodifiableMap(quantities);
+}
+
+public void addItemQuantity(Product product, Quantity quantity) {
+    items.add(new ProductQuantity(product, quantity));
+}
+```
+
+**2. Validação dos dados**
+
+Antes: `record ProductQuantity(Product product, double quantity) { }`, sem nenhuma regra.
+
+Depois:
+
+```java
+public record ProductQuantity(Product product, Quantity quantity) {
+    public ProductQuantity {
+        if (product == null) {
+            throw new IllegalArgumentException("Product cannot be null");
+        }
+        if (quantity == null) {
+            throw new IllegalArgumentException("Quantity cannot be null");
+        }
+        if (!product.unit().acceptsQuantity(quantity)) {
+            throw new IllegalArgumentException("Quantity must be an integer for discrete units");
+        }
+    }
+}
+```
+
+**3. Quantidade**
+
+Antes (`ThreeForTwoOffer` e similares): `int units = (int) quantity;` com `quantity` em `double`, e quilos somados em ponto flutuante.
+
+Depois: `int units = quantity.wholeUnits();` e `Quantity.of(0.1).plus(Quantity.of(0.2))` resulta exatamente em `0.300`.
+
+#### Resultados medidos
+
+| Indicador | Antes | Depois |
+| --------- | ----- | ------ |
+| Estruturas que guardam o conteúdo do carrinho | 2 (lista e mapa) | 1 (lista) |
+| Validações de `Product` e `ProductQuantity` | 0 | 8 regras, todas testadas |
+| Tipo da quantidade | `double` | `Quantity` (decimal exato) |
+| Dependências de `ShoppingCart` | 7 | 3 (`Product`, `ProductQuantity`, `Quantity`) |
+
+#### Mudança de comportamento intencional
+
+Objetos inválidos agora falham na criação, com `IllegalArgumentException`: produto com nome vazio ou unidade nula, quantidade negativa, `NaN` ou infinita, e quantidade fracionária para produto vendido por unidade. O defeito de impressão registrado pelo Grupo 3 (produto `EACH` com quantidade fracionada inserido direto em `Receipt.addProduct`) continua possível, porque a validação está em `ProductQuantity`, que a nota fiscal não usa.
+
+#### Situação dos achados do Grupo 2
+
+| Achado | Situação |
+| ------ | -------- |
+| L-03 | Resolvido: quantidade por `Quantity`; dinheiro por `Money` (Grupo 1). |
+| L-05 | Resolvido: o cast para `int` ficou em `Quantity.wholeUnits()`. |
+| L-13 | Pendente: `Product` e `ProductQuantity` continuam como dois records, com papéis distintos. |
+| L-02 | Pendente: `ShoppingCart.addItem` (uma unidade) continua só como conveniência. |
+
+#### Pendências e evolução futura
+
+- Decidir se `Product` e `ProductQuantity` realmente devem ser unificados (L-13) ou se a separação é adequada.
+- Fazer `Receipt.addProduct` aceitar apenas itens validados, para fechar o caso da quantidade fracionária em produto por unidade.
+- Dividir o código em pacotes (`checkout`, `model`), em conjunto com os demais grupos.
 
 ### Grupo 3: Nota fiscal e impressão (Sérgio Lopes Júnior)
 
