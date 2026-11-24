@@ -15,7 +15,7 @@ class ProductQuantityTest {
         ProductQuantity productQuantity = new ProductQuantity(rice, 2);
 
         assertEquals(rice, productQuantity.product());
-        assertEquals(2.0, productQuantity.quantity());
+        assertEquals(Quantity.of(2.0), productQuantity.quantity());
     }
 
     @Test
@@ -62,14 +62,14 @@ class ProductQuantityTest {
     void acceptsZeroQuantity() {
         ProductQuantity productQuantity = new ProductQuantity(rice, 0);
 
-        assertEquals(0.0, productQuantity.quantity());
+        assertEquals(Quantity.of(0.0), productQuantity.quantity());
     }
 
     @Test
     void acceptsFractionalQuantityForWeightedProduct() {
         ProductQuantity productQuantity = new ProductQuantity(apples, 1.5);
 
-        assertEquals(1.5, productQuantity.quantity());
+        assertEquals(Quantity.of(1.5), productQuantity.quantity());
     }
 
     @Test
@@ -84,6 +84,12 @@ class ProductQuantityTest {
     void acceptsIntegerQuantityForDiscreteProduct() {
         ProductQuantity productQuantity = new ProductQuantity(rice, 3);
 
-        assertEquals(3.0, productQuantity.quantity());
+        assertEquals(Quantity.of(3.0), productQuantity.quantity());
+    }
+
+    @Test
+    void rejectsNullQuantity() {
+        Product rice = new Product("rice", ProductUnit.EACH);
+        assertThrows(IllegalArgumentException.class, () -> new ProductQuantity(rice, (Quantity) null));
     }
 }

@@ -36,4 +36,11 @@ class ProductUnitTest {
     void eachIsDiscrete() {
         assertTrue(ProductUnit.EACH.isDiscrete());
     }
+
+    @Test
+    void acceptsQuantityObjectsAccordingToTheUnit() {
+        assertTrue(ProductUnit.EACH.acceptsQuantity(Quantity.units(3)));
+        assertFalse(ProductUnit.EACH.acceptsQuantity(Quantity.of(1.5)));
+        assertTrue(ProductUnit.KILO.acceptsQuantity(Quantity.of(1.5)));
+    }
 }

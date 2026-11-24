@@ -16,7 +16,7 @@ class TellerTest {
 
         // Nova promoção: 1.00 de desconto fixo a partir de duas unidades.
         OfferStrategy oneOffFromTwoUnits = (product, quantity, unitPrice) ->
-                quantity >= 2 ? Optional.of(new Discount(product, "1.00 off", Money.of("-1.00"))) : Optional.empty();
+                quantity.wholeUnits() >= 2 ? Optional.of(new Discount(product, "1.00 off", Money.of("-1.00"))) : Optional.empty();
 
         Teller teller = new Teller(catalog);
         teller.addSpecialOffer(rice, oneOffFromTwoUnits);

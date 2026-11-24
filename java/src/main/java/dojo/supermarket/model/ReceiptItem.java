@@ -1,13 +1,13 @@
 package dojo.supermarket.model;
 
-public record ReceiptItem(Product product, double quantity, Money price) {
+public record ReceiptItem(Product product, Quantity quantity, Money price) {
 	
 	public Money totalPrice() {
 		return this.price.times(quantity);
 	}
 	
 	public boolean hasSingleQuantity() {
-		return quantity == 1;
+		return quantity.isOne();
 	}
 	
 	public boolean isProductDiscrete() {

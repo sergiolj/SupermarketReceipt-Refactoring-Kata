@@ -13,7 +13,7 @@ class ReceiptPrinterTest {
     @Test   
     void printsSingleReceiptItemWithoutDiscountWithColumnArgument() {
     	Receipt receipt = new Receipt();
-    	receipt.addProduct(apples, 2.50, Money.of("1.25"));
+    	receipt.addProduct(apples, Quantity.of(2.50), Money.of("1.25"));
     	ReceiptPrinter printer = new ReceiptPrinter(20);
     	String outString = printer.printReceipt(receipt);
     	
@@ -26,7 +26,7 @@ class ReceiptPrinterTest {
     @Test   
     void printsProductDiscreteWithFractionQuantityBugInQuantityLine() {
     	Receipt receipt = new Receipt();
-    	receipt.addProduct(toothbrush, 2.50, Money.of("0.99"));
+    	receipt.addProduct(toothbrush, Quantity.of(2.50), Money.of("0.99"));
     	ReceiptPrinter printer = new ReceiptPrinter(20);
     	String outString = printer.printReceipt(receipt);
     	
@@ -40,7 +40,7 @@ class ReceiptPrinterTest {
     void printsSingleReceiptItemWithoutDiscountDefautlColumnArgument() {
     	Receipt receipt = new Receipt();
 
-    	receipt.addProduct(apples, 2.50, Money.of("1.25"));
+    	receipt.addProduct(apples, Quantity.of(2.50), Money.of("1.25"));
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
 
@@ -55,7 +55,7 @@ class ReceiptPrinterTest {
     void printsLessThanOneKilo() {
     	Receipt receipt = new Receipt();
     	
-    	receipt.addProduct(apples, 0.50, Money.of("1.20"));
+    	receipt.addProduct(apples, Quantity.of(0.50), Money.of("1.20"));
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
 
@@ -68,7 +68,7 @@ class ReceiptPrinterTest {
     @Test   
     void printsOneKiloItemHasNoMultiplicationLine() {
     	Receipt receipt = new Receipt();
-    	receipt.addProduct(apples, 1.00, Money.of("1.25"));
+    	receipt.addProduct(apples, Quantity.of(1.00), Money.of("1.25"));
     	ReceiptPrinter printer = new ReceiptPrinter();
     	String outString = printer.printReceipt(receipt);
     	
@@ -86,7 +86,7 @@ class ReceiptPrinterTest {
     @Test
     void printsSingleUnitItemWithoutQuantityLine() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 1, Money.of("0.99"));
+        receipt.addProduct(toothbrush, Quantity.of(1), Money.of("0.99"));
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("toothbrush      0.99\n\nTotal:          0.99\n", out);
     }
@@ -94,7 +94,7 @@ class ReceiptPrinterTest {
     @Test
     void printsDiscreteQuantityAsInteger() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 3, Money.of("0.99"));
+        receipt.addProduct(toothbrush, Quantity.of(3), Money.of("0.99"));
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("toothbrush      2.97\n  0.99 * 3\n\nTotal:          2.97\n", out);
     }
@@ -102,7 +102,7 @@ class ReceiptPrinterTest {
     @Test
     void printsWeightedQuantityWithThreeDecimals() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(apples, 2.5, Money.of("1.99"));
+        receipt.addProduct(apples, Quantity.of(2.5), Money.of("1.99"));
         String out = new ReceiptPrinter(20).printReceipt(receipt);
         assertEquals("apples          4.98\n  1.99 * 2.500\n\nTotal:          4.98\n", out);
     }
@@ -110,7 +110,7 @@ class ReceiptPrinterTest {
     @Test
     void printsDiscountLineAndDiscountedTotal() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(toothbrush, 3, Money.of("0.99"));
+        receipt.addProduct(toothbrush, Quantity.of(3), Money.of("0.99"));
         receipt.addDiscount(new Discount(toothbrush, "3 for 2", Money.of("-0.99")));
         String out = new ReceiptPrinter(30).printReceipt(receipt);
         assertEquals(
@@ -124,7 +124,7 @@ class ReceiptPrinterTest {
     @Test
     void longNamesAreNotTruncatedNorPadded() {
         Receipt receipt = new Receipt();
-        receipt.addProduct(new Product("very-long-product-name", ProductUnit.EACH), 1, Money.of("1.0"));
+        receipt.addProduct(new Product("very-long-product-name", ProductUnit.EACH), Quantity.of(1), Money.of("1.0"));
         String out = new ReceiptPrinter(10).printReceipt(receipt);
         assertEquals("very-long-product-name1.00\n\nTotal: 1.00\n", out);
     }

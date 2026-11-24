@@ -19,8 +19,8 @@ public class ReceiptFormat {
 	
 	public static String quantity(ReceiptItem item) {
 		return item.isProductDiscrete()
-        ? String.format(DISCRETE_UNIT_FORMAT, (int) item.quantity())
-        : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity());
+        ? String.format(DISCRETE_UNIT_FORMAT, item.quantity().wholeUnits())
+        : String.format(Locale.UK, WEIGHT_FORMAT, item.quantity().value());
 	}
 	
 	public static String total() {

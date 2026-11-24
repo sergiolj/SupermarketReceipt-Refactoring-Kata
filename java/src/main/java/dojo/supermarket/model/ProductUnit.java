@@ -13,6 +13,10 @@ public enum ProductUnit {
         return discrete;
     }
 
+    public boolean acceptsQuantity(Quantity quantity) {
+        return !discrete || quantity.isWholeNumber();
+    }
+
     public boolean acceptsQuantity(double quantity) {
         return !discrete || quantity == Math.floor(quantity);
     }

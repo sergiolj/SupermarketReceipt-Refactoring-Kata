@@ -37,7 +37,7 @@ public class Teller {
         for (ProductQuantity productQtd: productQuantities) {
             Product currentProduct = productQtd.product();
             
-            double quantity = productQtd.quantity();
+            Quantity quantity = productQtd.quantity();
             Money unitPrice = catalog.getUnitPrice(currentProduct);
             
             receipt.addProduct(currentProduct, quantity, unitPrice);

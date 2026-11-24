@@ -32,7 +32,7 @@ public record BundleOffer(List<Product> products, double percent) {
      * @param catalog    catálogo com os preços unitários
      * @return o desconto (valor negativo), ou vazio se não houver nenhum pacote completo
      */
-    public Optional<Discount> discountFor(Map<Product, Double> quantities, SupermarketCatalog catalog) {
+    public Optional<Discount> discountFor(Map<Product, Quantity> quantities, SupermarketCatalog catalog) {
         int completeBundles = completeBundles(quantities);
         if (completeBundles == 0) {
             return Optional.empty();
@@ -42,9 +42,9 @@ public record BundleOffer(List<Product> products, double percent) {
         return Optional.of(new Discount(products.get(0), "bundle " + percent + "% off", discountAmount));
     }
 
-    private int completeBundles(Map<Product, Double> quantities) {
+    private int completeBundles(Map<Product, Quantity> quantities) {
         return products.stream()
-                .mapToInt(product -> (int) quantities.getOrDefault(product, 0.0).doubleValue())
+                .mapToInt(product -> quantities.getOrDefault(product, Quantity.ZERO).wholeUnits())
                 .min()
                 .orElse(0);
     }
