@@ -178,8 +178,9 @@ No algoritmo observado não existe um main e os testes concentram o que se pode 
 | L-01 | Resolvido | O campo `argument` foi renomeado para `fixedValueOrQuantity` em `Offer`. |
 | L-07 | Reclassificado | Os testes de caracterização provam que `THREE_FOR_TWO` e `FIVE_FOR_AMOUNT` **estão implementadas** e funcionam (3 por 2 com 4 e 6 itens; 5 por valor com 5, 6 e 10 itens). O problema real é de legibilidade: o cálculo está espalhado em blocos `if` separados que testam o mesmo tipo de oferta mais de uma vez. |
 | L-13 | Pendente | `Product` e `ProductQuantity` continuam como dois records na `main`. |
-| L-16 | Pendente | `Receipt.addProduct` ainda recebe quatro parâmetros em vez de um `ReceiptItem`. |
-| L-17 | Pendente | `ReceiptItem` ainda importa `java.util.Objects` sem usar. |
+| L-03 | Parcial | O dinheiro em `double` foi trocado pelo tipo `Money` (PR #30); a quantidade em `double` continua pendente (Grupo 2). |
+| L-16 | Resolvido (Grupo 3) | `Receipt.addProduct` passou a receber três parâmetros, sem o total, que agora é calculado. |
+| L-17 | Resolvido (Grupo 3) | O import sem uso de `ReceiptItem` foi removido. |
 
 **Novos achados da revisão com testes de caracterização:**
 
@@ -354,6 +355,146 @@ Um único método concentra a complexidade do sistema. Cada nova oferta (como o 
   - Plano de atualização tecnológica e estratégias para evolução futura (ex: quebra de monolito, migração de banco, etc.).
   - Plano de modularização e melhorias de legibilidade/complexidade.
   - **Evidências de Código:** Trechos de código comparativos no padrão **"Antes" vs. "Depois"** com a devida explicação técnica das melhorias e testes automatizados.
+
+### Grupo 1: Ofertas e caixa (Manuel Bahamonde Boulhosa Neto)
+
+**Escopo:** `Teller`, `Offer`, `SpecialOfferType` e a lógica de promoções que estava dentro de `ShoppingCart.handleOffers`. O trabalho foi integrado à `main` pelos PRs #9, #13, #14, #16 e #30 (este último, o `Money`, compartilhado com os demais grupos). Ao final, a suíte do projeto tem **110 testes, todos passando**, com **99,0% de cobertura de linhas e 100% de branches** (JaCoCo).
+
+**Método:** cada passo foi feito em um commit próprio, com a suíte verde antes e depois. Antes de mexer no código, foram escritos testes de caracterização para registrar o comportamento do legado (FEATHERS, 2013). A complexidade ciclomática foi contada manualmente, e a cobertura medida com JaCoCo, adicionado ao `pom.xml` para ter a linha de base antes da refatoração (98,9% das linhas e 100% dos branches).
+
+#### Testes de caracterização adicionados
+
+| Commit | Teste | Comportamento registrado |
+| ------ | ----- | ------------------------ |
+| `1a83388` | `OfferCharacterizationTest` (16 testes) | Cada oferta abaixo do mínimo (sem desconto), com múltiplos do grupo (3 por 2 com 4 e 6 itens; 2 por valor com 4; 5 por valor com 4 e 10), percentual em produto por peso, quantidades somadas quando o mesmo produto entra em linhas separadas, última oferta cadastrada vence, vários produtos com ofertas diferentes. |
+| `73f11e6` | `ReceiptTest` | O total é a soma dos itens mais os descontos (valores negativos); lista de itens imutável. |
+| `2529418` | `ShoppingCartTest` | Acúmulo de quantidade por produto mantendo cada linha; coleções imutáveis. |
+| `eb49fa5` | `ReceiptPrinterTest` | Formatação da nota: item unitário, quantidade inteira e em quilos, linha de desconto, nome maior que a coluna. |
+
+#### Refatorações aplicadas
+
+| Commit | Refatoração (referência) | Problema no legado | Resultado |
+| ------ | ------------------------ | ------------------ | --------- |
+| `e281d76`, `b339e07`, `85e77fc` | *Replace Conditional with Polymorphism* (FOWLER, 2020) e padrão *Strategy* (GAMMA et al., 2000) | `handleOffers` concentrava todas as regras em uma cadeia de `if`, com complexidade ciclomática 13 e o mesmo tipo de oferta testado mais de uma vez (L-04, L-07, L-19, L-21). | Interface `OfferStrategy` e três implementações (`PercentDiscountOffer`, `ThreeForTwoOffer`, `QuantityForAmountOffer`, esta atende 2 por valor e 5 por valor). Maior complexidade: 4. |
+| `856131a` | Fábrica | A API pública usava `SpecialOfferType` mais um número solto. | `OfferStrategies.from(tipo, valor)`: `Teller.addSpecialOffer(tipo, produto, valor)` não mudou. |
+| `67f0f48`, `d9e8c66` | *Extract Class* e *Move Function* (FOWLER, 2020) | O `Teller` guardava as ofertas (L-18) e o carrinho manipulava a nota fiscal (*Feature Envy*, L-20). | `SpecialOffers` guarda e aplica as ofertas; o `Teller` só delega. |
+| `526cae2` | *Remove Dead Code* (FOWLER, 2020) | `handleOffers` e o record `Offer`, anêmico, ficaram sem uso. | Removidos; o `ShoppingCart` passou a depender de 2 tipos em vez de 7. |
+| `1e32c45` | Teste de extensão | Provar que ofertas novas não exigem alterar as classes existentes. | `Teller.addSpecialOffer(produto, estrategia)` aceita uma lambda. |
+| `5c173f4`, `0eb12b5`, `abf6d57` | *Funcionalidade nova do kata* | Oferta de pacote (*bundle*) inexistente. | `BundleOffer`: desconto percentual só sobre pacotes completos; soma-se às ofertas por produto. |
+| `2880220`, `4ccf920` | *Replace Primitive with Object* (FOWLER, 2020) | Valores monetários em `double` em todo o domínio (obsessão por primitivos, L-03 em parte). | Tipo `Money` (`BigDecimal`, duas casas, `HALF_UP`) usado por catálogo, ofertas, descontos, itens e total. Mudança compartilhada com os Grupos 2 e 3. |
+
+#### Evidências "Antes" vs. "Depois"
+
+**1. Regra da oferta "3 por 2"**
+
+Antes (`ShoppingCart.handleOffers`, trecho):
+
+```java
+int x = 1;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO) {
+    x = 3;
+} else if (offer.offerType() == SpecialOfferType.TWO_FOR_AMOUNT) {
+    x = 2;
+    if (quantityAsInt >= 2) { /* ... calcula e cria o Discount ... */ }
+} if (offer.offerType() == SpecialOfferType.FIVE_FOR_AMOUNT) {
+    x = 5;
+}
+int numberOfXs = quantityAsInt / x;
+if (offer.offerType() == SpecialOfferType.THREE_FOR_TWO && quantityAsInt > 2) {
+    double discountAmount = quantity * unitPrice
+        - ((numberOfXs * 2 * unitPrice) + quantityAsInt % 3 * unitPrice);
+    discount = new Discount(p, "3 for 2", -discountAmount);
+}
+```
+
+Depois (`ThreeForTwoOffer`):
+
+```java
+public record ThreeForTwoOffer() implements OfferStrategy {
+    private static final int GROUP_SIZE = 3;
+    private static final int PAID_PER_GROUP = 2;
+
+    @Override
+    public Optional<Discount> discountFor(Product product, double quantity, Money unitPrice) {
+        int units = (int) quantity;
+        if (units < GROUP_SIZE) {
+            return Optional.empty();
+        }
+        int completeGroups = units / GROUP_SIZE;
+        Money fullPrice = unitPrice.times(quantity);
+        Money payable = unitPrice.times(completeGroups * PAID_PER_GROUP + units % GROUP_SIZE);
+        return Optional.of(new Discount(product, "3 for 2", payable.minus(fullPrice)));
+    }
+}
+```
+
+Melhorias: sem variáveis `x` e `numberOfXs`, constantes nomeadas, cada oferta em sua classe, dinheiro em `Money`. Cada estratégia tem complexidade 1 ou 2 e é testada isoladamente.
+
+**2. Papel do `Teller` e do carrinho**
+
+Antes:
+
+```java
+private final Map<Product, Offer> offers = new HashMap<>();
+...
+theCart.handleOffers(receipt, offers, catalog);   // o carrinho altera a nota
+```
+
+Depois:
+
+```java
+private final SpecialOffers offers = new SpecialOffers();
+...
+offers.applyTo(theCart.productQuantities(), catalog, receipt);
+```
+
+**3. Dinheiro**
+
+Antes: `double unitPrice`, `double discountAmount`, com `DELTA = 0.001` nos testes para tolerar o erro de arredondamento binário.
+
+Depois: `Money unitPrice`, `Money discountAmount`, comparados com `assertEquals(Money.of("-0.99"), discount.discountAmount())`, sem tolerância.
+
+**4. Extensibilidade (nova oferta sem editar código existente)**
+
+```java
+OfferStrategy oneOffFromTwoUnits = (product, quantity, unitPrice) ->
+        quantity >= 2 ? Optional.of(new Discount(product, "1.00 off", Money.of("-1.00"))) : Optional.empty();
+teller.addSpecialOffer(rice, oneOffFromTwoUnits);
+```
+
+#### Resultados medidos
+
+| Indicador | Antes | Depois |
+| --------- | ----- | ------ |
+| Maior complexidade ciclomática de um método | 13 (`handleOffers`) | 4 (`OfferStrategies.from`) |
+| Cadeias condicionais com regra de oferta | 1 | 0 |
+| Dependências de `ShoppingCart` | 7 | 2 |
+| Dependências de `Teller` | 7 | 11 (**piorou**: delega por `SpecialOffers`, `OfferStrategies` e `OfferStrategy`, e passou a usar `BundleOffer` e `Money`; a responsabilidade diminuiu, mas a contagem de tipos aumentou) |
+| Testes (projeto inteiro) | 6 | 110 |
+| Cobertura de linhas / branches | 98,9% / 100% (linha de base) | 99,0% / 100% |
+
+#### Mudança de comportamento intencional
+
+O `Money` arredonda ao centavo (`HALF_UP`), então alguns valores mudaram, e os testes registram isso: 10% de uma escova de 0,99 passou de 0,099 para **0,10**; o desconto de pacote de 10% sobre 2,78 passou de 0,278 para **0,28**; e as descrições mostram duas casas (`2 for 1.50`, antes `2 for 1.5`). O total da nota continua sendo a soma de valores já em centavos, sem diferença entre o que a linha mostra e o que é somado.
+
+#### Situação dos achados do Grupo 1
+
+| Achado | Situação |
+| ------ | -------- |
+| L-01 | Resolvido: campo `argument` renomeado e depois eliminado com o record `Offer`. |
+| L-03 | **Parcial:** dinheiro resolvido pelo `Money`; a quantidade em `double` continua pendente (Grupo 2). |
+| L-04, L-07, L-19, L-20, L-21 | Resolvidos pelo Strategy. |
+| L-18 | Resolvido: `SpecialOffers` extraído do `Teller`. |
+| L-24 | Parcial: o argumento ignorado do "3 por 2" continua na API pública `addSpecialOffer(tipo, produto, valor)`, por compatibilidade. |
+| L-25 | Pendente: o contrato do catálogo não define o que acontece com produto inexistente. |
+| L-26 | Pendente: `java/bin/pom.xml` continua versionado. |
+
+#### Pendências e evolução futura
+
+- Dividir o código em pacotes (`offer`, `checkout`): adiado porque criaria dependência circular enquanto `Teller` e `ShoppingCart` estiverem no mesmo pacote que as estratégias.
+- O desconto do pacote aparece na nota com o nome do primeiro produto, porque `Discount` guarda um único produto.
+- `Teller.addSpecialOffer(tipo, produto, double)` ainda recebe o valor da oferta como `double`; ele converte para `Money` internamente.
+- Javadoc em `Teller` e `SpecialOfferType`, análise estática (Checkstyle ou PMD) e Maven Wrapper (planos do Grupo 1).
 
 ### Grupo 3: Nota fiscal e impressão (Sérgio Lopes Júnior)
 
